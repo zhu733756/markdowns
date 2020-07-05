@@ -33,7 +33,7 @@ dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /nores
 
  打开 [Microsoft Store](https://aka.ms/wslstore)，并选择你偏好的 Linux 分发版。 
 
-![1593859067662](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\1593859067662.png)
+![1593859067662](C:\Users\Administrator\Desktop\markdowns\pngs\1593859067662.png)
 
 ### 安装国内源&&vim技巧分享
 
@@ -45,7 +45,7 @@ cp sources.list sources.list.bak
 ll
 ```
 
-![1593859631257](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\1593859631257.png)
+![1593859631257](C:\Users\Administrator\Desktop\markdowns\pngs\1593859631257.png)
 
 接着，找到[清华镜像国内源地址]( https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/ )，选择你的ubuntu版本,然后把下面这一块全部复制下来，准备粘贴到sources.list里面。
 
@@ -57,8 +57,7 @@ ll
 vim sources.list
 ```
 
-1. 介绍几个使用的vim操作：
-2. 首先输入:set nu , 显示行数
+2. 输入:set nu , 显示行数
 3. 如果想进入第一行或者最后一行：
 
 - :$ 跳转到最后一行
@@ -66,11 +65,13 @@ vim sources.list
 - shift+g 跳转到最后一行
 - gg 跳转到第一行
 
-4. 如果想要进行全选操作：
+3. 如果想要进行全选操作：
 
 - **全选（高亮显示**）：按esc后，然后ggvG或者ggVG
 - **全部复制：**按esc后，然后ggyG
 - **全部删除：**按esc后，然后dG
+
+4. 批量注释：`:起始行号,结束行号s/^/注释符/g`
 
 按照上述的方法进行全部删除后粘贴，保存退出即可：
 
