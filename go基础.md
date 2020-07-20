@@ -18,3 +18,21 @@
 - 必须是main 包
 - 程序入口函数 func main
 - 入口文件名称不一定是main.go
+
+语言类同性
+
+- 大师与菜鸡的区别
+
+数据类型
+
+-  bool
+- string
+- int8~64
+- uint~64
+- byte
+- rune int32 unicode 编码值
+- float32
+- complex64
+- 不支持隐式转换，包括自定义类型
+- 不支持指针加减
+- 
