@@ -1,0 +1,27 @@
+- 网络管理[二选一]
+  - service 
+    - service network status
+    - service network restart
+  - systemctl list-unit-files NetworkManger.service
+  - 关闭
+    - chkconfig --list network
+    - chkconfig --level 2345 network off
+    - systemctl disable NetworkManger
+  - /etc/sysconfig/network-scripts/ifcfg-*
+    - ifcfg-eth0【动态配置】
+      - BOOTPROTO:ip分配规则
+        - dhcp动态分配
+        - static静态分配
+      - NAME、DEVICE，eth0
+        - 在grub进行设置
+      - ONBOOT
+        - 开机启动
+    - ifcfg-eth0【静态分配】
+      - IPADDR
+      - NETMASK
+      - GATEWAY
+      - DNS1
+  - hostname
+    - hostnamectl set-hostname c7.test11
+    - vim /etc/hosts
+      - 127.0.0.1       c7.test11
