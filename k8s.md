@@ -106,24 +106,14 @@
     - 运行网络的代理，service资源的载体
     - 建立pod网络和集群网络的关系
     - 流量调度模式：
-      - userspace
-      - iptables
-      - ipvs
-
-###### 图集
-
-![image-20200712200700579](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20200712200700579.png)
-
-
-
-
-​    ![image-20200712201556634](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20200712201556634.png)
+      - usersp
 
 - minikube
   - 二进制部署
   - kubeadmin部署
 
-- 应用程序
+- ###### 应用程序
+
   - 单机应用api转移成针对于k8s的应用
     - cloud native  app
     - seleverless, knative
@@ -132,8 +122,11 @@
       - 无感知云计算
   - 微服务
     - 区别于单体应用程序
+
     - 分层架构，将每个业务功能隔离出来
+
     - 每个功能独立成应用服务
+
     - 服务注册、服务发现
       - 网状结构
       - 非静态
@@ -141,11 +134,40 @@
         - 管理组件的接口服务
         - 管理组件的网络服务
         - 高可用
-    - 服务编排系统
+      
+    - 容器编排系统【解决了容器打包的根本性难题】
       - 服务注册和服务发现
       - 负载均衡
-      - 自动扩容或缩容、重启
+      - 自动扩容、缩容、迁移
       - 认证、配置、容量管理
       - 容器的提供和部署
       - 健康监控
+
+- 容器编排系统
+	- k8s
+	- Docker Swarm
+	- Masos and Marathon
+    
+- k8s集群节点
+	- masters
+		- control plane
+		- 多个master是冗余设置，避免master宕机
+	- node
+		- worker plane
+		- 多个node，用来负载均衡
+
+- k8s架构
+	- master交互手段 
+		- api
+		- cli
+		- ui
+	- 管理服务
+		- api server 【申明式api】
+		- scheduler 【评估服务部署在哪个node】
+		- controller 【控制器、拉取镜像、自动创建与删除】
+		- etcd【coreos公司开发】
+
+
+
+      
 
