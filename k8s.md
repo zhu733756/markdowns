@@ -86,6 +86,7 @@
 ###### 核心组件
 
 - 存储中心etcd服务
+
 - 主控节点master
   - kube-apiserver服务
     - rest api接口：鉴权、数据校验和集群状态
@@ -97,6 +98,7 @@
   - kube-scheduler服务
     - 接受调度pod到适合的运算节点
     - 预算策略、优选策略
+  
 - 运算节点node
   - kube-kubelet服务
     - 获取pod的期望状态，并调用接口达到该状态
@@ -147,7 +149,7 @@
 	- k8s
 	- Docker Swarm
 	- Masos and Marathon
-    
+  
 - k8s集群节点
 	- masters
 		- control plane
@@ -166,8 +168,75 @@
 		- scheduler 【评估服务部署在哪个node】
 		- controller 【控制器、拉取镜像、自动创建与删除】
 		- etcd【coreos公司开发】
+	
+- 服务注册和发现
 
+  - dns
+    - 服务总线
+    - 注册service到dns
+    - 实时动态返回service_ip
 
+  - service
+    - iptables或者ipvs
+    - 删除后会重建注册
+    - 虚拟ip
+  - label
+    - 标签选择器(controller也是这种方式)
+    - app:nginx
+    - 通过过滤拿到pod_ip
+  - pod
+    - 一个或多个容器
+    - pod_ip
 
-      
+- ntm
+
+  - nginx
+    - 用service代理至nginx
+    - 由nginx crontroller管理
+  - tomcat
+    - 用service代理至nginx
+    - 由nginx crontroller管理
+  - mysql
+    - 用service代理至nginx
+    - 由nginx crontroller管理
+
+- 运维管理：控制控制器
+
+  - 发布
+    - 控制器
+  - 变更
+    - 控制器
+  - 重启
+    - 控制器
+
+- network
+
+  - 通信
+
+    - 容器网络（不同容器之间怎么相互访问）
+      - docker
+        - docker0
+      - k8s
+        -  CNI（Container Network Interface）是由一组用于配置Linux容器的网络接口的规范和库组成，同时还包含了一些插件。
+        - CNI仅关心容器创建时的网络分配，和当容器被删除时释放网络资源。
+        - 容器运行时必须创建一个新的网络命名空间。
+    - 集群内网络（不同节点之间怎么相互访问）
+      - service
+        -  kube-proxy(服务代理) 进程 分配VIP
+        - 代理方式
+          -  userspace
+            - 通过service【iptables】访问代理转发至后端
+          - iptables代理模式
+            - 通过service【iptables】重定向到一个后端
+          - ipvs模式
+            - 通过vip访问
+      - 标签选择器
+    - 集群外网络（集群外怎么访问到集群内的服务）
+      -  Ingress 是从Kubernetes集群外部访问集群内部服务的入口 
+
+    
+
+    
+
+​      
 
