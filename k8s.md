@@ -233,9 +233,47 @@
       - 标签选择器
     - 集群外网络（集群外怎么访问到集群内的服务）
       -  Ingress 是从Kubernetes集群外部访问集群内部服务的入口 
+  
+- 控制平面
 
+  - API server：6443
+  - 用户认证，双向认证
+    - scheduler
+    - controller
+  - node、kube-proxy
+    - 运行pod
+    - kube-proxy把service上相应的配置、定义转化为node上的iptables或者ipvs
+  
+- pod，pod controller， service
+  - pod controller
+    - deployment -》 nginx-deploy  ->nginx pod
+    - service -> nginx-wc
+  
+  - services
+  	- 类似dnat
+  	- 简写svc
+
+- 负载均衡
+ 	- kubectl scale --replicas=3 deployment myapp
+ 	- kubectl describe svc/myapp
+ 	- 随机调度iptables
+ 	- 扩容和缩容
+
+- services
+    - clusterip
+    - nodeport
+     	- 节点端口，每个宿主机上创建一个端口映射服务
     
+- 总结
+	- services、ingress 为了保证pod的访问更加固定
+	- 控制器管理器 定义不同类型的控制器管理pod
+	- volume 跨节点数据持久
+	- 
 
+- 
+  
+    
+    
     
 
 ​      
