@@ -254,27 +254,59 @@
   	- 简写svc
 
 - 负载均衡
- 	- kubectl scale --replicas=3 deployment myapp
- 	- kubectl describe svc/myapp
- 	- 随机调度iptables
- 	- 扩容和缩容
+
+     	- kubectl scale --replicas=3 deployment myapp
+     	- kubectl describe svc/myapp
+     	- 随机调度iptables
+      - 扩容和缩容
 
 - services
     - clusterip
     - nodeport
      	- 节点端口，每个宿主机上创建一个端口映射服务
     
-- 总结
-	- services、ingress 为了保证pod的访问更加固定
-	- 控制器管理器 定义不同类型的控制器管理pod
-	- volume 跨节点数据持久
-	- 
+- apiserver
 
-- 
-  
-    
-    
-    
+    - 服务端
+      - 集群网管
+      - 操纵etcd入口
+      - 服务类型
+        - http api
+          - restful：表征状态转移
+          - json数据
+        - grpc
+          - google rpc
+          - 比restful更高效
+    - 客户端
+      - kubectl
+      - 控制器管理器
+      - 调度器
+      - services
+      - pods
+    - api接口中的资源分成多个资源
+      - 资源分组
+        - v1
+          - rbac
+          - apps
+            - v1
+            - v1beta1
+            - v1beta2
+          - authentications
+          - apiregistraions
+
+- 总结
+	
+	- 围绕pod展开
+	- services、ingress 为了保证pod的访问更加固定
+	- 控制器管理器 
+    - 定义不同类型的控制器管理pod
+	- volume 跨节点数据持久
+	
+	
+	
+	  
+	
+	  
 
 ​      
 
