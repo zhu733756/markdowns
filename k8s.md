@@ -256,9 +256,9 @@
 - 负载均衡
 
      	- kubectl scale --replicas=3 deployment myapp
-     	- kubectl describe svc/myapp
-     	- 随机调度iptables
-      - 扩容和缩容
+        	- kubectl describe svc/myapp
+        	- 随机调度iptables
+          - 扩容和缩容
 
 - services
     - clusterip
@@ -293,6 +293,19 @@
             - v1beta2
           - authentications
           - apiregistraions
+      - 分组，api group，api群组
+        - 独立更新
+        - 每个组可以多版本并存
+    - 资源配额
+      - 5个字段(和解循环：spec与status的状态相近)
+        - kind 类别
+        - apiVersion
+        - metadata
+          - labels
+          - name
+          - namespace
+        - spec 运行规则，也就是期望状态
+        - status：k8s 运行状态
 
 - 总结
 	
