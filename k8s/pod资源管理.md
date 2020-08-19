@@ -100,6 +100,7 @@
   - 初始化容器
 
     - 串行启动
+  
 - 启动
   
   - post start hook【启动后设置】
@@ -120,4 +121,39 @@
       - postStart
       - preStop
     - livenessProbe
+      - exec 容器内执行命令
+      - httpGet http请求
+      - tcpSocket socket三次握手
+      - initialDelaySeconds 初始化多久后检测
+      - timeoutSeconds 每次检测超时时间
     - readinessProbe
+  
+  - pod对象的相位
+
+    - Pending
+    - Running
+    - Succeeded
+    - Failed
+    - Unknown
+
+- Pod安全
+  
+  - securityContext
+    - runAsNonRoot
+    - runAsUser
+    - selinuxOptions
+  
+- Pod资源管理
+
+  - pods.spec.containers.resources
+    - limits【上限】
+      - cpu.limit=200m【1000m=1个核心】
+    - requests【下限】
+      - cpu.requests=200m【1000m=1个核心】
+  - 服务质量类别
+    - guaranteed
+      - cpu上下限相等
+    - Burstable 
+      - 至少有一个容器设置了cpu或者内存资源request属性
+    - BestEffort
+      - 没有设置上下限
