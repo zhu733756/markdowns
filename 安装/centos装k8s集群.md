@@ -1,7 +1,7 @@
-- 时间设置
+时间设置
 
-  - date
-  - systemctl restart chronyd
+- date
+- systemctl restart chronyd
 
 - 关闭iptables或者防火墙服务
 
@@ -120,21 +120,40 @@
       ```
       #初始化
       kubeadm init --kubernetes-version="v1.18.0" --pod-network-cidr="10.244.0.0/16" --ignore-preflight-errors=Swap
+      【--image-repository registry.aliyuncs.com/google_containers 这个没有测试过】
       # 必要的配置
       mkdir -p $HOME/.kube
       sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
       sudo chown $(id -u):$(id -g) $HOME/.kube/config
       ## 将kubectl join命令保存下来，后面要用！
-      ```
-
+    ```
+  
     - 安装finnel网络插件
       -  kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml 
       - 也可以通过附件apply
-    - kubectl get pods -n kube-system
-
-  - 【node节点】
-
+  - kubectl get pods -n kube-system
+  
+- 【node节点】
+  
     -  vim /etc/sysconfig/kubelet 
       -  KUBELET_EXTRA_ARGS="--fail-swap-on=false" 
     - 参考master拉去镜像
     - kubeadm join 172.16.110.246:6443 --token xxx  --ignore-preflight-errors=Swap
+  
+- 主机管理分机节点
+
+  - metrics-server
+
+    - https://github.com/kubernetes-incubator/metrics-server
+
+    - ```
+      $ git clone https://github.com.cnpmjs.org/kubernetes-sigs/metrics-server.git
+      $ git checkout -b release-v0.3 origin/release-v0.3
+      $ git pull
+      下载完成后还需要对 metrics-server/deploy/1.8+/resource-reader.yaml文件进行修改
+           image: registry.cn-hangzhou.aliyuncs.com/medo/metrics-server-amd64:v0.3.6
+            commands:
+            # 新增
+            - --kubelet-insecure-tls
+            - --kubelet-preferred-address-types=InternalIP
+      ```
