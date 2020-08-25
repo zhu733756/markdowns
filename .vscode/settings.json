@@ -1,0 +1,30 @@
+{
+    "python.pythonPath": "E:\\anconda\\python.exe",
+    "editor.tokenColorCustomizations": {
+        "comments": "#82e0aa", // 注释
+    },
+    // 选中高亮的颜色
+    "workbench.colorCustomizations": {
+        "editor.selectionBackground": "#aa0009"
+    },
+    "fileheader.customMade": {
+        "Description": "",
+        "version": "",
+        "Author": "zhu733756",
+        "Date": "Do not edit",
+        "LastEditors": "zhu733756",
+        "LastEditTime": "Do not Edit"
+    },
+    "fileheader.cursorMode": {
+        "@Description": "",
+        "@param": "\n\t\t\t- ",
+        "@return": "\n\t\t\t- "
+    },
+    "python.autoComplete.addBrackets": true,
+    "python.autoComplete.extraPaths": [
+        "E:\\anconda\\Scripts",
+        "E:\\anconda\\Lib\\site-packages"
+    ],
+    "python.linting.flake8Enabled": true,
+    "python.jediEnabled": true,
+}
