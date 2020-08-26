@@ -27,4 +27,5 @@
     ],
     "python.linting.flake8Enabled": true,
     "python.jediEnabled": true,
+    "python.languageServer": "Jedi",
 }

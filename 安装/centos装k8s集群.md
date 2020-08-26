@@ -156,4 +156,5 @@
             # 新增
             - --kubelet-insecure-tls
             - --kubelet-preferred-address-types=InternalIP
+         hostNetwork: true 
       ```

@@ -147,7 +147,7 @@
       - 没有设置上下限
 
 - 静态Pod
-  - 是一类kubelet进行管理的仅存在于特定Node上的Pod。
+  - 是一类kubelete进行管理的仅存在于特定Node上的Pod。
   - 它们不能通过APIServer进行管理，无法与ReplicationController、Deployment或者DaemonSet进行关联，并且kubelet无法对它们进行健康检查。
   - 静态Pod总是由kubelet创建的，并且总在kubelet所在的Node上运行。
 
@@ -212,6 +212,7 @@
     - 希望某种Pod的副本全部在指定的一个或者一些节点上运行，比如希望将MySQL数据库调度到一个具有SSD磁盘的目标节点上，此时Pod模板中的NodeSelector属性就开始发挥作用了
     - 做法：
       - 为k8s-node-1节点打上一个zone=north标签
+        - kubectl label nodes nodename key=value
       - 在Pod的定义中加上nodeSelector的设置
       - 运行kubectl create -f命令创建Pod，scheduler就会将该Pod调度到拥有zone=north标签的Node上
   - NodeAffinity：Node亲和性调度
