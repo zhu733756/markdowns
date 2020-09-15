@@ -159,13 +159,29 @@ commands:
 hostNetwork: true
 ```
 
-- 安装`calico`
-  - 确保`k8s controller manager` 设置以下选项
-    - --cluster-cidr=<your-pod-cidr> 以及 --allocate-node-cidrs=true
-  - curl https://docs.projectcalico.org/manifests/canal.yaml -O
-  - using pod CIDR 10.244.0.0/16 or CALICO_IPV4POOL_CIDR=<your-pod-cidr>
-  - kubectl apply -f canal.yaml
-- 安装`ingress nginx`
-  - https://github.com/kubernetes/ingress-nginx/blob/master/deploy/static/provider/baremetal/deploy.yaml
-  - 参考文章
-    - https://cloud.tencent.com/developer/article/1574048
+#### 安装`calico`
+
+- 确保`k8s controller manager` 设置以下选项
+  - --cluster-cidr=<your-pod-cidr> 以及 --allocate-node-cidrs=true
+- curl https://docs.projectcalico.org/manifests/canal.yaml -O
+- using pod CIDR 10.244.0.0/16 or CALICO_IPV4POOL_CIDR=<your-pod-cidr>
+- kubectl apply -f canal.yaml
+
+#### 安装 nginx-ingress
+
+- github & blog
+  - https://cloud.tencent.com/developer/article/1574048
+  - https://github.com/nginxinc/kubernetes-ingress
+- 获取自定义签证
+  - mkdir domain && cd domain
+  - openssl genrsa -out domain.key 2048
+  - openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout domain.key -out domain.crt
+  - base64 处理
+    - cat domain/domain.crt | base64 > cat domain/domain.crt.base64
+    - cat domain/domain.key | base64 > cat domain/domain.key.base64
+  - sed -ri "s#tls.crt:\s?(.\*)#tls\.crt: \$(echo `cat domain/domain.crt.base64 | sed ":a;N;s/\n//g;ba"`)#" ./common/default-server-secret.yaml
+  - sed -ri "s#tls.key:\s?(.\*)#tls\.key: \$(echo `cat domain/domain.key.base64 | sed ":a;N;s/\n//g;ba"`)#" ./common/default-server-secret.yaml
+- 报错
+  - error
+    - User "system:serviceaccount:nginx-ingress:nginx-ingress" cannot get resource "secrets" in API group "" in the namespace "nginx-ingress"
+    - kubectl create clusterrolebinding nginx-ingress-admin -n nginx-ingress --clusterrole=cluster-admin --serviceaccount=nginx-ingress:nginx-ingress

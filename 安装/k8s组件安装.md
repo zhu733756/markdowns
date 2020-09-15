@@ -15,3 +15,8 @@
   - helm init --upgrade \
     -i registry.cn-qingdao.aliyuncs.com/kubeoperator/tiller:v2.16.9 \
     --stable-repo-url https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts 
+- 卸载安装
+  kubectl get all --all-namespaces | grep tiller
+  kubectl delete deployment tiller-deploy -n kube-system
+  kubectl delete service tiller-deploy -n kube-system
+  kubectl get all --all-namespaces | grep tiller
