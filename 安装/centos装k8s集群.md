@@ -98,8 +98,8 @@
 
       - 如果报错，可以自定义 shell
 
+        ```shell
         #!/bin/bash
-
         images=(
         kube-apiserver:v1.18.0
         kube-controller-manager:v1.18.0
@@ -112,8 +112,23 @@
 
         for imageName in ${images[@]} ; do
             docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
-        docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName k8s.gcr.io/$imageName
+          docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName k8s.gcr.io/$imageName
         done
+        ### 根据版本号下载
+        if [ $# -ne 1 ];then
+            echo "please user in: ./`basename $0` KUBERNETES-VERSION"
+            exit 1
+        fi
+        version=$1
+
+        images=`kubeadm config images list --kubernetes-version=${version} |awk -F'/' '{print $2}'`
+
+        for imageName in ${images[@]};do
+            docker pull gcr.azk8s.cn/google-containers/$imageName
+            docker tag  gcr.azk8s.cn/google-containers/$imageName k8s.gcr.io/$imageName
+            docker rmi  gcr.azk8s.cn/google-containers/$imageName
+        done
+        ```
 
     - 主节点初始化
 
