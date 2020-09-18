@@ -111,7 +111,7 @@
         )
 
         for imageName in ${images[@]} ; do
-            docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+          docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
           docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName k8s.gcr.io/$imageName
         done
         ### 根据版本号下载
@@ -124,9 +124,9 @@
         images=`kubeadm config images list --kubernetes-version=${version} |awk -F'/' '{print $2}'`
 
         for imageName in ${images[@]};do
-            docker pull gcr.azk8s.cn/google-containers/$imageName
-            docker tag  gcr.azk8s.cn/google-containers/$imageName k8s.gcr.io/$imageName
-            docker rmi  gcr.azk8s.cn/google-containers/$imageName
+            docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+            docker tag  registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName k8s.gcr.io/$imageName
+            docker rmi  registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
         done
         ```
 
