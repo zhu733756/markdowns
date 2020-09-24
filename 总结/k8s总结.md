@@ -75,11 +75,11 @@
 
   - `Secret`
 
-    - 写入`etcd`，适合保存非明文账号密码
+    - 写入`etcd`，适合保存非明文账号密码，作为环境变量或者挂载文本传递
 
   - `ConfigMap`
 
-    - 写入配置信息
+    - 写入配置信息，挂载在一个目录或者设置成环境变量【获取cm的全部或者某个key】
 
   - `Downward API`
 
@@ -138,7 +138,7 @@
 
   - IPVS模块是LVS集群的核心软件模块，它安装在LVS集群作为负载均衡的主节点上，虚拟出一个IP地址和端口对外提供服务
 
-- 三种转发模式
+- **IPVS**三种转发模式
 
   - ###### DR模式
 
@@ -221,22 +221,45 @@
 
 #### **API Server**
 
-- 资源的唯一操作入口，保证了集群访问的安全性、可靠性，建立于存储技术之上的状态访问，不会因为存储组件的变化而变化
-- 封装了资源对象的增删改查，以RESTFUL接口提供给外部客户和内部组件调用
+- 作用
+  - 资源的唯一操作入口，保证了集群访问的安全性、可靠性，建立于存储技术之上的状态访问，不会因为存储组件的变化而变化
+  - 封装了资源对象的增删改查，以RESTFUL接口提供给外部客户和内部组件调用
+- 声明式API
+  - 只需要提交一个定义好的 API 对象来“声明”期望的状态是什么样子
+  - “声明式 API”允许有多个 API 写端，以 PATCH 的方式对 API 对象进行修改，而无需关心本地原始 YAML 文件的内容
+  - 有了上述两个能力，基于对 API 对象的增、删、改、查，在完全无需外界干预的情况下，完成调谐过程
+- Istio项目原理： Admission()
+  - 根据k8s的api范式定义CRD【自定义资源】，指明资源属于哪个Api组，Api版本，资源类型【istio的资源是pod】
+  - 将需要加入的pod的定义写入configmap通过挂载卷共享
+  - 控制器模式：定义期望的状态，获取pod携带的annotation字段进行判断，读取配置，以patch的方式合成新的pod
+    - 备注：此阶段在pod创建之前
 
 #### **PV、PVC、 StorageClass**
 
 - pvc和pv实际上类似于“接口”和“实现”的思想
-
 - 在pod中申明volumeClaimTemplates属性后，会创建pvc对象，与pv【PersistentVolume】对象关联
 -  PVC，都以“<PVC 名字 >-<StatefulSet 名字 >-< 编号 >”的方式命名
 - StorageClass是自动地为集群里存在的每一个 PVC，调用存储插件（Rook）创建对应的 PV
+
+#### CRD
+
+- `Custom Resource Define` 简称 CRD，是 Kubernetes为提高可扩展性让开发者去自定义资源的一种方式
+- `CRD `资源可以动态注册到集群中
+
+#### [Operator](https://github.com/operator-framework/operator-sdk/blob/master/README.md)
+
+- 结合了特定领域知识并通过 CRD 机制扩展了 资源，使用户管理内置资源（Pod、Deployment等）一样创建、配置和管理应用程序
+
+- `Operator` 就可以看成是 CRD 和 Controller 的一种组合特例
+  - 资源模型定义
+  - 控制器
+- [example](https://www.qikqiak.com/k8strain/operator/operator/)
 
 #### **控制器**
 
 - 控制器管理器
   
-- 实现集群故障的检查和恢复，负责管理各种控制器
+  - 实现集群故障的检查和恢复，负责管理各种控制器
   
 - 控制器设计模式 - 调谐循环`Reconcile Loop` 
 
@@ -256,86 +279,92 @@
 
 - 控制器管理器的几种控制器类型
 
+    - `endpoint-controller` ：定期关联service到pod的映射关系
 
-  - `endpoint-controller` ：定期关联service到pod的映射关系
+    - `Node Controller`: 实现管理和监控集群中的各个Node节点的相关控制功能
 
-  - `Node Controller`: 实现管理和监控集群中的各个Node节点的相关控制功能
+    - ` ReplicaSet  Controller`: 简称RS
+      - 维持一组pod的运行，保证一定数量的Pod在集群中运行
+      - 持续监听Pod的运行状态，在故障后数量减少或者增加时触发调谐过程
 
-  - ` ReplicaSet  Controller`: 简称RS
-    - 维持一组pod的运行，保证一定数量的Pod在集群中运行
-    - 持续监听Pod的运行状态，在故障后数量减少或者增加时触发调谐过程
-    
-  - `replication Controller`: 简称RC
-    - RS和RC功能几乎一致
-    - 唯一的区别是RC只支持等式label选择器，但RS还支持集合选择器
-    
-  - `Deployment controller`
-    
-    - `Deployment `控制 `ReplicaSet`（版本），`ReplicaSet` 控制 `Pod`（副本数）
-    - `restartPolicy=Always`保证`RS`处于`Running`状态【 当有容器退出时进行重启】
-    - 水平扩展/收缩【rs的replica数量】
-    - 滚动更新【rs的属性】
-    
-  - `statefulset controller`
+    - `replication Controller`: 简称RC
+      - RS和RC功能几乎一致
+      - 唯一的区别是RC只支持等式label选择器，但RS还支持集合选择器
 
-    - 无状态服务
-      - 服务运行的实例不会在本地存储需要持久化的数据
-      - token是无状态的
-      
-    - 有状态服务
-      - 服务运行的实例需要在本地存储持久化数据
-      - session是有状态的
-      
-    - `statefulset`特性：维持拓扑先后关系，有状态的控制器
+    - `Deployment controller`
 
-      - StatefulSet 的控制器直接管理的是 Pod，分配给每个 Pod 的唯一顺序索引
-        - `<pod-name>`的形式为`<statefulset name>-<ordinal index>`，与 StatefulSet 的每个 Pod 实例一一对应
-        -  Pod 的创建，也是严格按照编号顺序**升序**进行的，当前一个ready后才会创建后一个
-        - Pod 副本的更新和删除，会按照序列号**降序**处理。
-      - Kubernetes 通过 Headless Service，为这些有编号的 Pod，在 DNS 服务器中生成带有同样编号的 DNS 记录
-        - `headless Service`的`dns`记录：`<pod-name>.<svc-name>.<namespace>.svc.cluster.local`
-        - `headless Service`可以让DNS服务解析到的是PodIP
+      - `Deployment `控制 `ReplicaSet`（版本），`ReplicaSet` 控制 `Pod`（副本数）
+      - `restartPolicy=Always`保证`RS`处于`Running`状态【 当有容器退出时进行重启】
+      - 水平扩展/收缩【rs的replica数量】
+      - 滚动更新【rs的属性】
 
-      - StatefulSet 还为每一个 Pod 分配并创建一个同样编号的 PVC
-        - `PVC`都以`<PVC 名字 >-<StatefulSet 名字 >-< 编号 >`的方式命名
-        - 删除pod的时候对应的pvc并不会删除，会重新绑定
+    - `statefulset controller`
 
-  - `DaemonSet`
+      - 无状态服务
+        - 服务运行的实例不会在本地存储需要持久化的数据
+        - token是无状态的
+        
+      - 有状态服务
+        - 服务运行的实例需要在本地存储持久化数据
+        - session是有状态的
+        
+      - `statefulset`特性：维持拓扑先后关系，有状态的控制器
 
+        - StatefulSet 的控制器直接管理的是 Pod，分配给每个 Pod 的唯一顺序索引
+          - `<pod-name>`的形式为`<statefulset name>-<ordinal index>`，与 StatefulSet 的每个 Pod 实例一一对应
+          -  Pod 的创建，也是严格按照编号顺序**升序**进行的，当前一个ready后才会创建后一个
+          - Pod 副本的更新和删除，会按照序列号**降序**处理。
+        - Kubernetes 通过 Headless Service，为这些有编号的 Pod，在 DNS 服务器中生成带有同样编号的 DNS 记录
+          - `headless Service`的`dns`记录：`<pod-name>.<svc-name>.<namespace>.svc.cluster.local`
+          - `headless Service`可以让DNS服务解析到的是PodIP
 
-    - 定义
+        - StatefulSet 还为每一个 Pod 分配并创建一个同样编号的 PVC
+          - `PVC`都以`<PVC 名字 >-<StatefulSet 名字 >-< 编号 >`的方式命名
+          - 删除pod的时候对应的pvc并不会删除，会重新绑定
 
-      - 保证每个节点上有且只有一个 Pod，类似守护进程
-    - 应用
+    - `DaemonSet`
 
-      - 各种网络插件的 Agent 组件，都必须运行在每一个节点上，用来处理这个节点上的容器网络；
-      - 各种存储插件的 Agent 组件，也必须运行在每一个节点上，用来在这个节点上挂载远程存储目录，操作容器的 Volume 目录；
-      - 各种监控组件和日志组件，也必须运行在每一个节点上，负责这个节点上的监控信息和日志搜集。
-    - 实现
+      - 定义
 
-      - 遍历node以及nodeAffinity 【node选择器】和 Toleration属性控制
-      - 使用 ControllerRevision管理版本
+        - 保证每个节点上有且只有一个 Pod，类似守护进程
+      - 应用
 
-  - `Job`和`CrontabJob`
+        - 各种网络插件的 Agent 组件，都必须运行在每一个节点上，用来处理这个节点上的容器网络；
+        - 各种存储插件的 Agent 组件，也必须运行在每一个节点上，用来在这个节点上挂载远程存储目录，操作容器的 Volume 目录；
+        - 各种监控组件和日志组件，也必须运行在每一个节点上，负责这个节点上的监控信息和日志搜集。
+      - 实现
 
+        - 遍历node以及nodeAffinity 【相当于node选择器】和 Toleration属性控制
+        - 使用 ControllerRevision管理版本
 
-    - 关键字段
+    - `Job`和`CrontabJob`
 
-      - spec.parallelism，它定义的是一个 Job 在任意时间最多可以启动多少个 Pod 同时运行
-      - spec.completions，它定义的是 Job 至少要完成的 Pod 数目，即 Job 的最小完成数
-    - 三种调度方式
+      - 关键字段
 
-      - 模板管理法
+        - spec.parallelism，它定义的是一个 Job 在任意时间最多可以启动多少个 Pod 同时运行
+        - spec.completions，它定义的是 Job 至少要完成的 Pod 数目，即 Job 的最小完成数
+      - 三种调度方式
 
-        - 外部管理器 +Job 模板：用脚本批量生成yaml文件
-      - 拥有固定任务数目的并行 Job
+        - 模板管理法
 
-        - spec.completions和spec.parallelism
-        - 可以用来消费任务，只达到固定数据的任务完成量即可，每个job从生产队列去一个任务
-      - 指定并行度（parallelism），但不设置固定的 completions 的值
+          - 外部管理器 +Job 模板：用脚本批量生成yaml文件
+        - 拥有固定任务数目的并行 Job
 
-        - 只指定spec.parallelism并发数
-        - 可以用来消费任务，直到任务队列为空才退出
+          - spec.completions和spec.parallelism
+          - 可以用来消费任务，只达到固定数据的任务完成量即可，每个job从生产队列去一个任务
+        - 指定并行度（parallelism），但不设置固定的 completions 的值
+
+          - 只指定spec.parallelism并发数
+          - 可以用来消费任务，直到任务队列为空才退出
+
+- 自定义控制器
+
+  - Informer【通知器】作为资源client，与apiserver建立联系
+    - 所谓 Informer，其实就是一个带有本地缓存和索引机制的、可以注册 EventHandler 的 client
+  - informer作用【ListAndWatch】
+    - 从队列中取出事件，同步【创建或者更新】本地缓存
+    - 根据事件类型触发资源事件回调函数
+  - 除了控制循环之外的所有代码，实际上都是 Kubernetes 自动生成的
 
 ####  **调度器**
 
@@ -347,4 +376,14 @@
   - 优选策略：采用优选策略确定最优节点
 
 ## 架构原理
+
+#### 分层架构
+
+- 核心层：Kubernetes 最核心的功能，对外提供 API 构建高层的应用，对内提供插件式应用执行环境
+- 应用层：部署（无状态应用、有状态应用、批处理任务、集群应用等）和路由（服务发现、DNS 解析等）
+- 管理层：系统度量（如基础设施、容器和网络的度量），自动化（如自动扩展、动态 Provision 等）以及策略管理（RBAC、Quota、PSP、NetworkPolicy 等）
+- 接口层：kubectl 命令行工具、客户端 SDK 以及集群联邦
+- 生态系统：在接口层之上的庞大容器集群管理调度的生态系统，可以划分为两个范畴
+  - Kubernetes 外部：日志、监控、配置管理、CI、CD、Workflow、FaaS、OTS 应用、ChatOps 等
+  - Kubernetes 内部：CRI、CNI、CVI、镜像仓库、Cloud Provider、集群自身的配置和管理等
 

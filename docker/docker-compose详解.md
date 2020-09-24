@@ -408,7 +408,7 @@ environment:
 
 ### external_links
 
-链接到当前部署服务的外部容器 `CONTAINER:ALIAS  `
+链接到当前部署服务的外部容器 `CONTAINER: ALIAS`
 
 ```yaml
 external_links:
