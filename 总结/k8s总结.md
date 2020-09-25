@@ -111,6 +111,14 @@
     -  定义的`pod`通过`label`选择器继承该定义
     - 适合做一些`pod`的重复性定义
 
+#### SideCar
+
+- 日志代理/转发，例如 fluentd；
+- Service Mesh，比如 Istio，Linkerd；
+- 代理，比如 Docker Ambassador；
+- 探活：检查某些组件是不是正常工作；
+- 其他辅助性的工作，比如拷贝文件，下载文件等；
+
 #### [**IPtables**](https://wangchujiang.com/linux-command/c/iptables.html)
 
 - `Linux`上常用的防火墙软件，是`netfilter`项目的一部分。可以直接配置，也可以通过许多前端和图形界面配置。
@@ -386,4 +394,12 @@
 - 生态系统：在接口层之上的庞大容器集群管理调度的生态系统，可以划分为两个范畴
   - Kubernetes 外部：日志、监控、配置管理、CI、CD、Workflow、FaaS、OTS 应用、ChatOps 等
   - Kubernetes 内部：CRI、CNI、CVI、镜像仓库、Cloud Provider、集群自身的配置和管理等
+
+## 安全
+
+## 网络
+
+## 监控
+
+## 日志
 
