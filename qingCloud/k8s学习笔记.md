@@ -2,31 +2,52 @@
 
 ## k8s学习笔记
 
-### k8s基础
+### k8s快速了解
 
 #### 来源
 
 - `borg`项目
 - 使用`go`语言编写
 
-#### 架构
+#### 主从架构简介
 
 ![kubernetes arch](https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20200510122933.png)
 
--  Master 节点
-  - kube-apiserver，负责集群通信
-  - kube-sheduler, 负责容器调度
-    - 主要用于收集和分析当前 Kubernetes 集群中所有 Node 节点的资源 (包括内存、CPU 等) 负载情况，然后依据资源占用情况分发新建的 Pod 到 Kubernetes 集群中可用的节点
-    - 实时监测 Kubernetes 集群中未分发和已分发的所有运行的 Pod
-    - 实时监测 Node 节点信息，由于会频繁查找 Node 节点，所以 Scheduler 同时会缓存一份最新的信息在本地
-    - 在分发 Pod 到指定的 Node 节点后，会把 Pod 相关的 Binding 信息写回 API Server，以方便其它组件使用
-  - kube-colltroller-manager， 维护管理集群状态，负责执行各种控制器
-  - etcd
-- Node节点
-  - kubelete
-    - 通过CRI接口来实现pod增删
-    - 调用CNI（网络插件）、CSI（存储插件）完成网络和存储功能
-  - 容器运行时（CRI）
+![kubernetes high level component archtecture](https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20200510122959.png)
+
+###### `Master` 节点
+
+- `kube-apiserver`负责集群通信
+
+  - 特点
+    - `API Server` 会与 `etcd `进行通信
+    - 其它模块都必须通过 `API Server`的`restful`接口访问集群状态
+  - 好处
+    - 保证集群状态访问的安全
+    - 隔离了集群状态访问和后端存储，存储技术不限于`etcd`，提高了可扩展性
+
+- `kube-sheduler` 负责容器调度
+  
+  - 主要用于收集和分析当前 Kubernetes 集群中所有 Node 节点的资源 (包括内存、CPU 等) 负载情况，然后依据资源占用情况分发新建的 Pod 到 Kubernetes 集群中可用的节点
+  - 实时监测 Kubernetes 集群中未分发和已分发的所有运行的 Pod
+  - 实时监测 Node 节点信息，由于会频繁查找 Node 节点，所以 Scheduler 同时会缓存一份最新的信息在本地
+  - 在分发 Pod 到指定的 Node 节点后，会把 Pod 相关的 Binding 信息写回 API Server，以方便其它组件使用
+  
+- `kube-colltroller-manager`维护管理集群状态，负责管理各种控制器
+
+  ![kube-controller-manager](https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/20200510123033.png)
+
+- etcd
+
+###### `Node`节点
+
+- `kubelet `是负责容器真正运行的核心组件
+  - 负责 `Node` 节点上 `Pod `的创建、修改、监控、删除等全生命周期的管理
+    - 通过调用容器运行时接口`CRI`来实现容器绑定`Volume、Port、 Network `等
+  - 定时上报本地 Node 的状态信息给 API Server
+- `kube-proxy`解决了外部网络访问内部应用
+  - `kube-proxy`从 API Server 获取 Services 和 Endpoints 的配置信息，然后根据其配置信息在 `Node` 上启动一个 `Proxy` 的进程并监听相应的服务端口
+  - `kube-proxy`后端使用随机、轮循等负载均衡算法进行调度
 
 ### 名词解释
 
@@ -46,39 +67,22 @@
 
       - Pid、Mount、UTS、IPC、Network 和 User等
 
-    - 控制组
-
-      ```
-      Linux Cgroups
-      ```
-
-      实现了容器的运行资源控制
+    - 控制组`Linux Cgroups`实现了容器的运行资源控制
 
       - CPU、内存、磁盘、网络带宽
-
-    - rootfs实现了容器的文件系统隔离
-
-      - 切换并挂载根目录
-      - Docker 在镜像的设计中，引入了层（layer）的概念，实现了增量rootfs
+      
+    - `rootfs`实现了容器的文件系统隔离
+- 切换并挂载根目录
+      - `Docker` 在镜像的设计中，引入了层（layer）的概念，实现了增量rootfs
 
 - 容器引申的问题
 
-  - ```
-    docker exec
-    ```
-
-    是如何进入容器执行命令的？
-
+  - `docker exec`是如何进入容器执行命令的？
     - 通过`inspect`获取容器在主机中的实际进程号
     - 将`/proc/{进程id}/ns/{ns}`这个fd以及要执行的命令`cmd`传递给`setns`
-    - `setns`执行成功后，当前进程和运行的容器其实共享了名称空间，说明该进程就加入到容器中去了
-
-  - ```
-    docker volumes
-    ```
-
-    是如何实现的？
-
+- `setns`执行成功后，当前进程和运行的容器其实共享了名称空间，说明该进程就加入到容器中去了
+  
+- `docker volumes`是如何实现的？
     - 容器挂载的本质类似于做了inode的“重定向”，将容器中的目录对应的`dentry`指针指向了被挂载的`inode`
 
 #### **Pod**
@@ -94,14 +98,9 @@
     - 没有共享pid名称空间，pod中的容器间相互独立
     - 可以通过参数设置共享pid
 
-- 原理
+- `pod`创建原理
 
-  - ```
-    infra
-    ```
-
-    容器最先创建
-
+  - `infra`容器最先创建
     - `infra`容器就是一个占用资源极少的永远处于“暂停”状态的容器
     - `infra`容器决定了`pod`的生命周期，跟用户容器无关
 
@@ -117,34 +116,26 @@
 
 - 重要字段
 
-  - ```
-    ImagePullPolicy
-    ```
-
-    - ```
-      Always
-      ```
-
-      - 每次创建 Pod 都重新拉取一次镜像
-
+  - `ImagePullPolicy`
+    
+    - `Always`
+  - 每次创建 Pod 都重新拉取一次镜像
+    
     - `Never` 或者 `IfNotPresent`
-
-    - 不主动拉取，只有在宿主机不存在时才去拉取
-
-    - ```
-      OnFailure
-      ```
-
+    
+  - 不主动拉取，只有在宿主机不存在时才去拉取
+  
+- `OnFailure`
       - 当容器终止运行且退出码不为0时，由kubelet自动重启该容器
 
   - `LifeStyle`
 
     - `postStart`
-
+  
     - 容器启动后立即执行一个操作
 
     - ```
-      livenessProbe
+    livenessProbe
       ```
 
       - 可以配置存活探测的频率、以及存活探测的接口【执行命令或者请求api】
@@ -152,11 +143,9 @@
     - readinessProbe
 
       - 可读性探针
-
-    - ```
-      preStop
-      ```
-
+  
+    - `preStop`
+    
       - 同步进行容器被杀死后的执行的一个操作
 
   - resources
@@ -340,12 +329,10 @@
 - PVC，都以“<PVC 名字 >-<StatefulSet 名字 >-< 编号 >”的方式命名
 - StorageClass是自动地为集群里存在的每一个 PVC，调用存储插件创建对应的 PV【动态创建pv】
 
-#### CRD
+#### CRD&[Operator](https://github.com/operator-framework/operator-sdk/blob/master/README.md)
 
 - `Custom Resource Define` 简称 CRD，是 Kubernetes为提高可扩展性让开发者去自定义资源的一种方式
 - `CRD `资源可以动态注册到集群中
-
-#### [Operator](https://github.com/operator-framework/operator-sdk/blob/master/README.md)
 
 - 结合了特定领域知识并通过 CRD 机制扩展了 资源，使用户管理内置资源（Pod、Deployment等）一样创建、配置和管理应用程序
 - `Operator` 就可以看成是 CRD 和 Controller 的一种组合特例
@@ -464,11 +451,193 @@
 
 ### 安全
 
+#### `RBAC`权限控制
+
+###### `API`对象
+
+- 声明式`API`设计
+- 不同的`API`路径有不同的版本隔离
+  - Alpha
+  - Beta
+  - 稳定级别
+- 查询资源cmdline
+  - `kubectl get --raw /apis/batch/v1 | python -m json.tool`
+  - 使用命令行开启一个`proxy`，然后使用`curl`请求
+    - `kubectl proxy`会在终端开启一个`127.0.0.1:8001`的服务
+    - 开启另一个终端，`curl http://127.0.0.1:8001/apis/batch/v1`
+
+###### `RBAC`
+
+- `k8s`的`API`对象都是模型化的
+  - 资源对象包含`pods`/`ConfigMaps`/`Deployments`/`nodes`等
+  - 资源对象的操作有`create`/`get`/`delete`/`update`/`edit`/`watch`/`exec`/`patch`等
+- `RBAC`中重要字段概念
+  - `Rule`
+    - 规则，作用于不同`API Group`上的一组操作集合
+  - `Role`和`ClusterRole`
+    - `Role`定义的规则适用于`namespace`,`ClusterRole`定义的规则作用于整个集群
+    - 这两种角色都属于`API`资源对象
+  - `Subject`
+    - `User Account`，用户账户
+    - `Group`， 关联多个账户
+    - `Service Account`，服务账号，和`namespace`关联
+  - `RoleBinding`和`ClusterRoleBinding`
+    - 角色和集群角色绑定，将`Subject`与`Role`进行绑定
+
+###### 创建角色
+
+- `Role API  ` 或者`ClusterRole API`对象`yaml`清单包含字段, 不同之处是前者需要指定`namespace`
+  - `apiGroup`，组
+  - `resources`，资源列表
+  - `verbs`, 操作
+
+###### 创建角色权限绑定
+
+- `subjects`
+  - `Kind`，`User`或者`Group`或者`ServiceAccount`
+  - `name`，创建的主体账户名称
+  - `apiGroup`，可以留空
+- `roleRef`
+  - `Kind`，`Role`或者`ClusterRole`
+  - `name`，创建的角色名称
+  - `apiGroup`，可以留空
+
+###### `ServiceAccount`
+
+- 只能访问某个`namespace`的`ServiceAccount`
+  - `RoleBinding`中填写`namespace: your namespace`
+  - `system:serviceaccount:kube-system:your sa `
+- 访问全局的`ServiceAccount`
+  - 使用`ClusterRoleBinding`
+
+#### `Security Context`
+
+###### 应用场景
+
+- 运行容器使用`sysctl`运行命令修改内核参数，`docker`使用`--privileged`参数来使用特权模式
+
+###### k8s提供三种解决方案
+
+- Container-level Security Context：仅应用到指定的容器
+- Pod-level Security Context：应用到 Pod 内所有容器以及 Volume
+- Pod Security Policies（PSP）：应用到集群内部所有 Pod 以及 Volume
+
+###### 如何设置`pod`字段
+
+- 访问权限控制：根据用户 ID（UID）和组 ID（GID）来限制对资源（比如：文件）的访问权限
+
+  ```
+  securityContext:
+      runAsUser: 1000 #UID, userId为1000
+      runAsGroup: 3000 #GID, groupIDw为3000
+      fsGroup: 2000 # fsGroup, 所有者以及在指定的数据卷下创建的任何文件，其 GID 都为 2000
+  ```
+
+  ![Security Context List](https://www.qikqiak.com/k8strain/assets/img/security/security-context-list.png)
+
+- Linux Capabilities：给某个特定的进程超级权限，而不用给 root 用户所有的 privileged 权限
+
+  - 几个概念
+
+    - 特权进程（UID=0，也就是超级用户, 拥有所有的内核权限）和非特权进程（UID!=0)
+    - `SUID(Set User ID on execution)`，允许用户以可执行文件的 owner 权限来运行，有安全隐患
+    -  Linux 引入了 `Capabilities` 机制来对 root 权限进行了更加细粒度的控制
+
+  - 原理
+
+    - 在执行特权操作时，如果进程的有效身份不是 root，就去检查是否具有该特权操作所对应的 
+
+      `capabilites`，并以此决定是否可以进行该特权操作
+
+    - [可选设置项](https://www.qikqiak.com/k8strain/assets/img/security/docker-drop-capabilites.png)
+
+  - 如何使用
+
+    ```
+    $ sudo setcap cap_net_admin,cap_net_raw-p /bin/ping # p:Permitted
+    $ getcap /bin/ping
+    ```
+
+  - `docker`中通过 `--cap-add`和`--cap-drop`来设置
+
+- `k8s Capalibilities yaml`样例
+
+  ```
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: cpb-demo
+  spec:
+    containers:
+    - name: cpb
+      image: busybox
+      args:
+      - sleep
+      - "3600"
+      securityContext:
+        capabilities:
+          add: # 添加
+          - NET_ADMIN
+          drop:  # 删除
+          - KILL
+  ```
+
+- 为容器设置`SELINUX`标签
+
+  ```
+  securityContext:
+    seLinuxOptions:
+      level: "s0:c123,c456"
+  ```
+
+#### 准入控制器
+
+###### 概念
+
+- 准入控制器是在对象持久化之前用于对 `Kubernetes API Server` 的请求进行拦截的代码段，在请求经过**身份验证**和**授权之后**放行通过
+
+###### 具体过程
+
+![k8s api request lifecycle](https://bxdc-static.oss-cn-beijing.aliyuncs.com/images/k8s-api-request-lifecycle.png)
+
+- 检查集群中是否启用了` admission webhook `控制器，并根据需要进行配置。
+- 编写处理准入请求的 HTTP 回调，回调可以是一个部署在集群中的简单 HTTP 服务，甚至也可以是一个 `serverless` 函数，例如[这个项目](https://github.com/kelseyhightower/denyenv-validating-admission-webhook)。
+- 通过 `MutatingWebhookConfiguration` 和 `ValidatingWebhookConfiguration` 资源配置 admission webhook。
+
+###### 编写 webhook
+
+- 开启`apiserver`中`MutatingAdmissionWebhook` 和 `ValidatingAdmissionWebhook` 这两个控制器
+
+  ````
+  --enable-admission-plugins=NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook
+  ````
+
+- 验证
+
+  ```
+  kubectl api-versions |grep admission
+  ```
+
+- [样例参考](https://github.com/cnych/admission-webhook-example)
+  - `webhook.go`
+    - 进行验证的主要逻辑，通过`label`和`annotations`来实现是否需要准入验证
+  - `main.go`
+    - 启动一个服务，监听终止信号
+  - 签发证书脚本：`./deployment/webhook-create-signed-cert.sh`
+
 ### 网络
 
 ### 监控
 
 ### 日志
+
+## 存储
+
+## Service Mesh 实践
+
+## Kubernetes 多租户
+
+## Kubernetes DevOps 
 
 ### 其他
 
