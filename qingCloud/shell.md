@@ -21,3 +21,22 @@
 #### 判断哪个进程打开的fd最多
 
 ```lsof /dev/tty1 | awk -F ' ' '{count[$2]++;} END {for(i in count) {print i count[i]}}'```
+
+#### 带版本号安装软件
+
+```
+#查看版本信息
+apt-cache policy docker-ce 
+apt list --installed |grep docker
+#安装
+apt install docker-ce=5:19.03.11~3-0~ubuntu-bionic
+```
+
+#### 查看GPU信息
+
+```
+lspci | grep -i vga #显卡
+lspci | grep -i nvidia #GPU
+lspci -v -s 00:09.0 
+```
+
