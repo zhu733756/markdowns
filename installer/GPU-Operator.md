@@ -12,7 +12,7 @@
 
 #### K8s Runtime Architecture
 
-![img](https://img2018.cnblogs.com/blog/1334952/201906/1334952-20190610155423745-506706065.png)
+![img](https://raw.githubusercontent.com/zhu733756/bedpic/main/images1334952-20190610155423745-506706065.png)
 
 #### GPU-Operator Architecture
 
@@ -161,70 +161,9 @@ Restart the Docker daemon to complete the installation after setting the default
 $ sudo systemctl restart docker
 ```
 
-##### Adding the NVIDIA Runtime
-
-**Do not follow this section if you installed the `nvidia-docker2` package below, it already registers the runtime. So just jump to next step!**
-
-###### Systemd drop-in file
-
-```
-$ sudo mkdir -p /etc/systemd/system/docker.service.d
-```
-
-```
-$ sudo tee /etc/systemd/system/docker.service.d/override.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=/usr/bin/dockerd --host=fd:// --add-runtime=nvidia=/usr/bin/nvidia-container-runtime
-EOF
-```
-
-```
-$ sudo systemctl daemon-reload \
-  && sudo systemctl restart docker
-```
-
-###### Daemon configuration file
-
-The `nvidia` runtime can also be registered with Docker using the `daemon.json` configuration file:
-
-```
-$ sudo tee /etc/docker/daemon.json <<EOF
-{
-    "runtimes": {
-        "nvidia": {
-            "path": "/usr/bin/nvidia-container-runtime",
-            "runtimeArgs": []
-        }
-    }
-}
-EOF
-```
-
-```
-sudo pkill -SIGHUP dockerd
-```
-
-###### Command Line
-
-Use `dockerd` to add the `nvidia` runtime:
-
-```
-$ sudo dockerd --add-runtime=nvidia=/usr/bin/nvidia-container-runtime [...]
-```
-
 ##### [Environment variables (OCI spec)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#environment-variables-oci-spec)
 
 Users can control the behavior of the NVIDIA container runtime using environment variables - especially for enumerating the GPUs and the capabilities of the driver. Each environment variable maps to an command-line argument for `nvidia-container-cli` from [libnvidia-container](https://github.com/NVIDIA/libnvidia-container). These variables are already set in the NVIDIA provided base [CUDA images](https://ngc.nvidia.com/catalog/containers/nvidia:cuda).
-
-##### Troubleshooting
-
-###### Generating debugging logs
-
-For most common issues, debugging logs can be generated and can help us root cause the problem. In order to generate these:
-
-- Edit your runtime configuration under `/etc/nvidia-container-runtime/config.toml` and uncomment the `debug=...` line.
-- Run your container again, thus reproducing the issue and generating the logs.
 
 #### Install NVIDIA GPU Operator
 
@@ -284,7 +223,7 @@ toolkit:
     value: true
 ```
 
-**If the installation process times out, you can check if the docker images are pulling.**
+**If the installation process times out, you can check whether the docker images are pulling or not.**
 
 ##### [Considerations to Install in Air-Gapped Clusters](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/getting-started.html#considerations-to-install-in-air-gapped-clusters)
 
@@ -319,7 +258,7 @@ gpu-operator-1611672791-node-feature-discovery-worker-rmx9w       1/1     Runnin
 gpu-operator-7d6d75f67c-kbmms                                     1/1     Running   1          11h
 ```
 
-##### Describe your gpu-node to check if the resource exists
+##### Check if the resource exists
 
 ```
 $ kubectl describe node worker-gpu-001
@@ -478,7 +417,7 @@ nvidia-device-plugin-validation            0/1     Completed   0          5h27m
 nvidia-driver-daemonset-dvd9r              1/1     Running     3          15h
 ```
 
-Edit the svc to `NodePort` type,  so we can get the metrics like this:
+Edit the `svc` to `NodePort` type,  so we can get the metrics like this:
 
 ```
 $ kubectl get svc -n gpu-operator-resources
@@ -544,10 +483,14 @@ spec:
 
 After applying it, we can see the metrics like this below:
 
-![image-20210127145835985](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127145835985.png)
+![image-20210127153611937](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127153611937.png)
 
 ###### Using Grafana
 
-After decoration, you can see your own dashboard on the Grafana interface:
+By configuration and decoration, you can see your own dashboard on the Grafana interface:
 
 ![image-20210127150716255](../../../../../AppData/Roaming/Typora/typora-user-images/image-20210127150716255.png)
+
+After running a AI task, you can see the changes below:
+
+![](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimagesimage-20210127153816691.png)
