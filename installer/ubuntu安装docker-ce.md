@@ -22,7 +22,7 @@ sudo add-apt-repository "deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/l
 如果`/etc/apt/sources.list.d/`不存在`docker.list`
 
 ```
-echo  deb [arch=amd64] https:*//mirrors.aliyun.com/docker-ce/linux/ubuntu bionic stable*  >  /etc/apt/sources.list.d/docker.list 
+echo  deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu bionic stable >  /etc/apt/sources.list.d/docker.list 
 ```
 
 ###### Step 4: 更新并安装Docker-CE

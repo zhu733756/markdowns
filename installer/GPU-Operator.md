@@ -1,12 +1,22 @@
 ## GPU-Operator
 
-#### GPU-Operator Architecture
+#### Code Repositories:
 
-![../_images/nvidia-docker-arch.png](https://docs.nvidia.com/datacenter/cloud-native/_images/nvidia-docker-arch.png)
+- GitHub: https://github.com/NVIDIA/gpu-operator
+- GitLab: https://gitlab.com/nvidia/kubernetes/gpu-operator
+
+#### Documents：
+
+- https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/getting-started.html#install-nvidia-gpu-operator
+
 
 #### K8s Runtime Architecture
 
 ![img](https://img2018.cnblogs.com/blog/1334952/201906/1334952-20190610155423745-506706065.png)
+
+#### GPU-Operator Architecture
+
+![../_images/nvidia-docker-arch.png](https://docs.nvidia.com/datacenter/cloud-native/_images/nvidia-docker-arch.png)
 
 #### Components and Packages
 
@@ -48,6 +58,16 @@
 - [libnvidia-container](https://github.com/NVIDIA/libnvidia-container/tree/gh-pages/)
 
 #### Installation Guide
+
+##### Prerequisites
+
+Before installing the GPU Operator, you should ensure that the Kubernetes cluster meets some prerequisites.
+
+1. Nodes must not be pre-configured with NVIDIA components (driver, container runtime, device plugin).
+2. Nodes must be configured with Docker CE/EE, `cri-o`, or `containerd`. For docker, follow the official install [instructions](https://docs.docker.com/engine/install/).
+3. If the HWE kernel (e.g. kernel 5.x) is used with Ubuntu 18.04 LTS, then the `nouveau` driver for NVIDIA GPUs must be blacklisted before starting the GPU Operator. Follow the steps in the CUDA installation [guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#runfile-nouveau-ubuntu) to disable the nouveau driver and update `initramfs`.
+4. Node Feature Discovery (NFD) is required on each node. By default, NFD master and worker are automatically deployed. If NFD is already running in the cluster prior to the deployment of the operator, set the Helm chart variable `nfd.enabled` to `false` during the Helm install step.
+5. For monitoring in Kubernetes 1.13 and 1.14, enable the kubelet `KubeletPodResources` [feature](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/) gate. From Kubernetes 1.15 onwards, its enabled by default.
 
 ##### Linux Distributions
 
@@ -115,20 +135,30 @@ Install the `nvidia-docker2` package (and dependencies) after updating the packa
 $ sudo apt-get update
 ```
 
-```
+```shell
 $ sudo apt-get install -y nvidia-docker2
+-----
+   What would you like to do about it ?  Your options are:
+    Y or I  : install the package maintainer's version
+    N or O  : keep your currently-installed version
+      D     : show the differences between the versions
+      Z     : start a shell to examine the situation
+-----
+chooses "N" if you have custom settings, the configuration below will override your settings.
+{
+    "runtimes": {
+        "nvidia": {
+            "path": "/usr/bin/nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    }
+}
 ```
 
 Restart the Docker daemon to complete the installation after setting the default runtime:
 
 ```
 $ sudo systemctl restart docker
-```
-
-At this point, a working setup can be tested by running a base CUDA container:
-
-```
-$ sudo docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
 ```
 
 ##### Adding the NVIDIA Runtime
@@ -196,24 +226,6 @@ For most common issues, debugging logs can be generated and can help us root cau
 - Edit your runtime configuration under `/etc/nvidia-container-runtime/config.toml` and uncomment the `debug=...` line.
 - Run your container again, thus reproducing the issue and generating the logs.
 
-#### Prerequisites
-
-Before installing the GPU Operator, you should ensure that the Kubernetes cluster meets some prerequisites.
-
-1. Nodes must not be pre-configured with NVIDIA components (driver, container runtime, device plugin).
-2. Nodes must be configured with Docker CE/EE, `cri-o`, or `containerd`. For docker, follow the official install [instructions](https://docs.docker.com/engine/install/).
-3. If the HWE kernel (e.g. kernel 5.x) is used with Ubuntu 18.04 LTS, then the `nouveau` driver for NVIDIA GPUs must be blacklisted before starting the GPU Operator. Follow the steps in the CUDA installation [guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#runfile-nouveau-ubuntu) to disable the nouveau driver and update `initramfs`.
-4. Node Feature Discovery (NFD) is required on each node. By default, NFD master and worker are automatically deployed. If NFD is already running in the cluster prior to the deployment of the operator, set the Helm chart variable `nfd.enabled` to `false` during the Helm install step.
-5. For monitoring in Kubernetes 1.13 and 1.14, enable the kubelet `KubeletPodResources` [feature](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/) gate. From Kubernetes 1.15 onwards, its enabled by default.
-
-Before installing the GPU Operator on NVIDIA vGPU, ensure the following.
-
-1. The NVIDIA vGPU Host Driver is pre-installed on all hypervisors hosting NVIDIA vGPU accelerated Kubernetes worker node virtual machines. Please refer to [NVIDIA vGPU Documentation](https://docs.nvidia.com/grid/12.0/index.html) for details.
-2. A NVIDIA vGPU License Server is installed and reachable from all Kubernetes worker node virtual machines.
-3. A private registry is available to upload the NVIDIA vGPU specific driver container image.
-4. Each Kubernetes worker node in the cluster has access to the private registry. Private registry access is usually managed through imagePullSecrets. See the Kubernetes Documentation for more information. The user is required to provide these secrets to the NVIDIA GPU-Operator in the driver section of the values.yaml file.
-5. Git and Docker/Podman are required to build the vGPU driver image from source repository and push to local registry.
-
 #### Install NVIDIA GPU Operator
 
 ##### Install Helm
@@ -272,118 +284,9 @@ toolkit:
     value: true
 ```
 
-##### Considerations to Install in Air-Gapped Clusters
+**If the installation process times out, you can check if the docker images are pulling.**
 
-###### Local Image Registry
-
-- Get the values.yaml
-
-```
-$ curl -sO https://raw.githubusercontent.com/NVIDIA/gpu-operator/master/deployments/gpu-operator/values.yaml
-```
-
-- Update `values.yaml` with repository, image details as applicable
-- replace <repo.example.com:port> below with your local image registry url and port
-
-```
-operator:
-  repository: <repo.example.com:port>
-  image: gpu-operator
-  version: 1.4.0
-  imagePullSecrets: []
-  validator:
-    image: cuda-sample
-    repository: <my-repository:port>
-    version: vectoradd-cuda10.2
-    imagePullSecrets: []
-
-driver:
-  repository: <repo.example.com:port>
-  image: driver
-  version: "450.80.02"
-  imagePullSecrets: []
-
-toolkit:
-  repository: <repo.example.com:port>
-  image: container-toolkit
-  version: 1.4.0-ubuntu18.04
-  imagePullSecrets: []
-
-devicePlugin:
-  repository: <repo.example.com:port>
-  image: k8s-device-plugin
-  version: v0.7.1
-  imagePullSecrets: []
-
-dcgmExporter:
-  repository: <repo.example.com:port>
-  image: dcgm-exporter
-  version: 2.0.13-2.1.2-ubuntu20.04
-  imagePullSecrets: []
-
-gfd:
-  repository: <repo.example.com:port>
-  image: gpu-feature-discovery
-  version: v0.2.2
-  imagePullSecrets: []
-
-node-feature-discovery:
-  imagePullSecrets: []
-  image:
-    repository: <repo.example.com:port>
-    tag: "v0.6.0"
-```
-
-###### Local Package Repository
-
-The `Driver` container deployed as part of GPU operator require certain packages to be available as part of driver installation. In Air-Gapped installations, users are required to create a mirror repository for their OS distribution and make following packages available:
-
-KERNEL_VERSION is the underlying running kernel version on the GPU node GCC_VERSION is the gcc version matching the one used for building underlying kernel
-
-```
-ubuntu:
-   linux-headers-${KERNEL_VERSION}
-   linux-image-${KERNEL_VERSION}
-   linux-modules-${KERNEL_VERSION}
-
-centos:
-   elfutils-libelf.x86_64
-   elfutils-libelf-devel.x86_64
-   kernel-headers-${KERNEL_VERSION}
-   kernel-devel-${KERNEL_VERSION}
-   kernel-core-${KERNEL_VERSION}
-   gcc-${GCC_VERSION}
-
-rhel/rhcos:
-   kernel-headers-${KERNEL_VERSION}
-   kernel-devel-${KERNEL_VERSION}
-   kernel-core-${KERNEL_VERSION}
-   gcc-${GCC_VERSION}
-```
-
-```
-kubectl create configmap repo-config -n gpu-operator-resources --from-file=<path-to-repo-list-file>
-```
-
-Once the ConfigMap is created using above command, update `values.yaml` with this information, to let GPU Operator mount the repo configiguration within `Driver` container to pull required packages.
-
-###### Ubuntu
-
-```
-driver:
-   repoConfig:
-      configMapName: repo-config
-      destinationDir: /etc/apt/sources.list.d
-```
-
-###### CentOS/RHEL/RHCOS
-
-```
-driver:
-   repoConfig:
-      configMapName: repo-config
-      destinationDir: /etc/yum.repos.d
-```
+##### [Considerations to Install in Air-Gapped Clusters](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/getting-started.html#considerations-to-install-in-air-gapped-clusters)
 
 ##### Deploy GPU Operator with updated `values.yaml`
 
@@ -392,8 +295,259 @@ $ helm install --wait --generate-name \
    nvidia/gpu-operator -f values.yaml
 ```
 
-Check the status of the pods to ensure all the containers are running:
+#### Check the status of your deployments
+
+##### Check the health status of the pods
 
 ```
 $ kubectl get pods -n gpu-operator-resources
+NAME                                       READY   STATUS      RESTARTS   AGE
+gpu-feature-discovery-ff4ng                1/1     Running     2          11h
+nvidia-container-toolkit-daemonset-2vxjz   1/1     Running     0          11h
+nvidia-dcgm-exporter-pqwfv                 1/1     Running     0          64m
+nvidia-device-plugin-daemonset-42n74       1/1     Running     0          64m
+nvidia-device-plugin-validation            0/1     Completed   0          64m
+nvidia-driver-daemonset-dvd9r              1/1     Running     3          11h
 ```
+
+```
+$ kubectl get pods -n default
+NAME                                                              READY   STATUS    RESTARTS   AGE
+gpu-operator-1611672791-node-feature-discovery-master-bf8dmj6f8   1/1     Running   1          11h
+gpu-operator-1611672791-node-feature-discovery-worker-79wkd       1/1     Running   1          11h
+gpu-operator-1611672791-node-feature-discovery-worker-rmx9w       1/1     Running   2          11h
+gpu-operator-7d6d75f67c-kbmms                                     1/1     Running   1          11h
+```
+
+##### Describe your gpu-node to check if the resource exists
+
+```
+$ kubectl describe node worker-gpu-001
+---
+Allocatable:
+  cpu:                15600m
+  ephemeral-storage:  82435528Ki
+  hugepages-2Mi:      0
+  memory:             63649242267
+  nvidia.com/gpu:     1  #check this
+  pods:               110
+---
+```
+
+#### Running Sample GPU Applications
+
+##### Two examples from the official document
+
+```
+cat << EOF | kubectl create -f -
+apiVersion: v1
+kind: Pod
+metadata:
+   name: dcgmproftester
+spec:
+   restartPolicy: OnFailure
+   containers:
+   - name: dcgmproftester11
+   image: nvidia/samples:dcgmproftester-2.0.10-cuda11.0-ubuntu18.04
+   args: ["--no-dcgm-validation", "-t 1004", "-d 120"]
+   resources:
+      limits:
+         nvidia.com/gpu: 1
+   securityContext:
+      capabilities:
+         add: ["SYS_ADMIN"]
+
+EOF
+```
+
+```
+$ curl -LO https://nvidia.github.io/gpu-operator/notebook-example.yml
+$ cat notebook-example.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tf-notebook
+  labels:
+    app: tf-notebook
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    name: http
+    targetPort: 8888
+    nodePort: 30001
+  selector:
+    app: tf-notebook
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tf-notebook
+  labels:
+    app: tf-notebook
+spec:
+  securityContext:
+    fsGroup: 0
+  containers:
+  - name: tf-notebook
+    image: tensorflow/tensorflow:latest-gpu-jupyter
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+    ports:
+    - containerPort: 8
+```
+
+##### Deploy the two applications
+
+```
+$ kubectl apply -f cuda-loader-generator.yaml 
+pod/dcgmproftester created
+$ kubectl apply -f notebook-example.yml       
+service/tf-notebook created
+pod/tf-notebook created
+```
+
+```
+$ kubectl describe node worker-gpu-001
+---
+Allocated resources:
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource           Requests     Limits
+  --------           --------     ------
+  cpu                1087m (6%)   1680m (10%)
+  memory             1440Mi (2%)  1510Mi (2%)
+  ephemeral-storage  0 (0%)       0 (0%)
+  nvidia.com/gpu     1            1 #check this
+Events:              <none>
+```
+
+![image-20210127104932704](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127104932704.png)
+
+![image-20210127105037194](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127105037194.png)
+
+##### Jupyter Notebook
+
+```
+$ kubectl get svc # get the nodeport of the svc, 30001
+gpu-operator-1611672791-node-feature-discovery   ClusterIP   10.233.10.222   <none>        8080/TCP       12h
+kubernetes                                       ClusterIP   10.233.0.1      <none>        443/TCP        12h
+tf-notebook                                      NodePort    10.233.53.116   <none>        80:30001/TCP   7m52s
+
+$ kubectl logs tf-notebook 
+[I 21:50:23.188 NotebookApp] Writing notebook server cookie secret to /root/.local/share/jupyter/runtime/notebook_cookie_secret
+[I 21:50:23.390 NotebookApp] Serving notebooks from local directory: /tf
+[I 21:50:23.391 NotebookApp] The Jupyter Notebook is running at:
+[I 21:50:23.391 NotebookApp] http://tf-notebook:8888/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
+[I 21:50:23.391 NotebookApp]  or http://127.0.0.1:8888/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
+[I 21:50:23.391 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 21:50:23.394 NotebookApp]
+
+   To access the notebook, open this file in a browser:
+      file:///root/.local/share/jupyter/runtime/nbserver-1-open.html
+   Or copy and paste one of these URLs:
+      http://tf-notebook:8888/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
+   or http://127.0.0.1:8888/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
+```
+
+Take the token to access the jupyter notebook online service, you can  enjoy your jobs now.
+
+```
+http:://<your-machine-ip>:30001/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
+```
+
+#### GPU Telemetry
+
+##### Setting up Prometheus
+
+- you can deploy your Prometheus system by following [here](https://github.com/prometheus-operator/kube-prometheus.git)
+- A better Prometheus on the kubesphere platform will provide support in subsequent versions
+
+##### Deploy your own ServiceMonitor
+
+Show the exportor `nvidia-dcgm-exporter` deployed by the operator
+
+```
+$ kubectl get pods -n gpu-operator-resources
+NAME                                       READY   STATUS      RESTARTS   AGE
+gpu-feature-discovery-ff4ng                1/1     Running     2          15h
+nvidia-container-toolkit-daemonset-2vxjz   1/1     Running     0          15h
+nvidia-dcgm-exporter-pqwfv                 1/1     Running     0          5h27m #here
+nvidia-device-plugin-daemonset-42n74       1/1     Running     0          5h27m
+nvidia-device-plugin-validation            0/1     Completed   0          5h27m
+nvidia-driver-daemonset-dvd9r              1/1     Running     3          15h
+```
+
+Edit the svc to `NodePort` type,  so we can get the metrics like this:
+
+```
+$ kubectl get svc -n gpu-operator-resources
+NAME                   TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+nvidia-dcgm-exporter   NodePort   10.233.28.200   <none>        9400:31129/TCP   5h31m
+$ curl http://[your node ip]:31129/gpu/metrics
+----
+DCGM_FI_DEV_SM_CLOCK{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 405
+DCGM_FI_DEV_MEM_CLOCK{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 715
+DCGM_FI_DEV_GPU_TEMP{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 30
+DCGM_FI_DEV_POWER_USAGE{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 24.124000
+DCGM_FI_DEV_PCIE_REPLAY_COUNTER{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
+DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
+DCGM_FI_DEV_MEM_COPY_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
+DCGM_FI_DEV_ENC_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
+DCGM_FI_DEV_DEC_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
+----
+```
+
+Get the service and endpoint:
+
+```
+root@master:~/gpu/samples# kubectl describe svc nvidia-dcgm-exporter -n gpu-operator-resources
+Name:                     nvidia-dcgm-exporter
+Namespace:                gpu-operator-resources
+Labels:                   app=nvidia-dcgm-exporter
+Annotations:              prometheus.io/scrape: true
+Selector:                 app=nvidia-dcgm-exporter
+Type:                     NodePort
+IP:                       10.233.28.200
+Port:                     gpu-metrics  9400/TCP
+TargetPort:               9400/TCP
+NodePort:                 gpu-metrics  31129/TCP
+Endpoints:                10.233.84.54:9400
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+```
+
+So we can edit a servicemonitor like this:
+
+```
+$ cat custom/gpu-cm.yaml 
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: monitoring
+  labels:
+     app: nvidia-dcgm-exporter
+spec:
+  jobLabel: nvidia-gpu
+  endpoints:
+  - port: gpu-metrics
+    interval: 15s
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  namespaceSelector:
+    matchNames:
+    - gpu-operator-resources
+```
+
+After applying it, we can see the metrics like this below:
+
+![image-20210127145835985](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127145835985.png)
+
+###### Using Grafana
+
+After decoration, you can see your own dashboard on the Grafana interface:
+
+![image-20210127150716255](../../../../../AppData/Roaming/Typora/typora-user-images/image-20210127150716255.png)
