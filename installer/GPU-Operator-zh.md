@@ -16,7 +16,7 @@
 
 ![img](https://raw.githubusercontent.com/zhu733756/bedpic/main/images1334952-20190610155423745-506706065.png)
 
-#### GPU-Operator 架构图
+#### GPU-Operator Runtime 架构图
 
 ![../_images/nvidia-docker-arch.png](https://docs.nvidia.com/datacenter/cloud-native/_images/nvidia-docker-arch.png)
 
@@ -527,6 +527,6 @@ gpu-operator-1611672791 default         1               2021-01-26 14:53:18.1896
 $ helm uninstall gpu-operator-1611672791
 ```
 
-#### 重启无法使用CPU这件事
+#### 重启无法使用GPU这件事
 
 关于部署好`gpu-operator`和`AI`的集群，重启时可能会出现插件还没加载，应用优先载入的情况，这时会出现用不上gpu的问题，需要重新部署应用才行。
