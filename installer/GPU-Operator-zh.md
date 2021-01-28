@@ -1,24 +1,26 @@
+
+
 ## GPU-Operator
 
-#### Code Repositories:
+#### 官方代码仓库
 
 - GitHub: https://github.com/NVIDIA/gpu-operator
 - GitLab: https://gitlab.com/nvidia/kubernetes/gpu-operator
 
-#### Documents：
+#### 官方文档
 
 - https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/getting-started.html#install-nvidia-gpu-operator
 
 
-#### K8s Runtime Architecture
+#### K8s Runtime 架构图
 
 ![img](https://raw.githubusercontent.com/zhu733756/bedpic/main/images1334952-20190610155423745-506706065.png)
 
-#### GPU-Operator Architecture
+#### GPU-Operator 架构图
 
 ![../_images/nvidia-docker-arch.png](https://docs.nvidia.com/datacenter/cloud-native/_images/nvidia-docker-arch.png)
 
-#### Components and Packages
+#### 组件
 
 ```
 ├─ nvidia-docker2
@@ -49,7 +51,7 @@
 
 - a simple CLI utility to automatically configure GNU/Linux containers leveraging NVIDIA GPUs
 
-#### Package Repo
+#### 组件仓库
 
 - [nvidia-docker2](https://github.com/NVIDIA/nvidia-docker/tree/gh-pages/)
 
@@ -57,21 +59,41 @@
 
 - [libnvidia-container](https://github.com/NVIDIA/libnvidia-container/tree/gh-pages/)
 
-#### Installation Guide
+#### 安装说明
 
-##### Prerequisites
+##### 前提条件
 
-Before installing the GPU Operator, you should ensure that the Kubernetes cluster meets some prerequisites.
+在安装operator之前，请配置好安装环境如下：
 
-1. Nodes must not be pre-configured with NVIDIA components (driver, container runtime, device plugin).
-2. Nodes must be configured with Docker CE/EE, `cri-o`, or `containerd`. For docker, follow the official install [instructions](https://docs.docker.com/engine/install/).
-3. If the HWE kernel (e.g. kernel 5.x) is used with Ubuntu 18.04 LTS, then the `nouveau` driver for NVIDIA GPUs must be blacklisted before starting the GPU Operator. Follow the steps in the CUDA installation [guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#runfile-nouveau-ubuntu) to disable the nouveau driver and update `initramfs`.
-4. Node Feature Discovery (NFD) is required on each node. By default, NFD master and worker are automatically deployed. If NFD is already running in the cluster prior to the deployment of the operator, set the Helm chart variable `nfd.enabled` to `false` during the Helm install step.
-5. For monitoring in Kubernetes 1.13 and 1.14, enable the kubelet `KubeletPodResources` [feature](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/) gate. From Kubernetes 1.15 onwards, its enabled by default.
+1. 所有节点**不需要**预先安装NVIDIA组件(driver, container runtime, device plugin)；
 
-##### Linux Distributions
+2. 所有节点必须配置Docker , `cri-o`, 或者 `containerd`. 对于doker来说，可以参考[这里](https://docs.docker.com/engine/install/)；
 
-Supported Linux distributions are listed below:
+3. 如果使用HWE内核(e.g. kernel 5.x) 的·Ubuntu 18.04 LTS环境下,需要给 `nouveau driver` 添加黑名单，需要更新 `initramfs`；`cpu`型号为`Broadwell`:
+
+   ```
+   $ sudo vim /etc/modprobe.d/blacklist.conf
+   blacklist nouveau
+   options nouveau modeset=0
+   $ sudo update-initramfs -u
+   $ reboot
+   $ lsmod | grep nouveau # 验证nouveau是否已禁用
+   ```
+
+   ```
+   $ cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c  #本文测试时cpu型号为Broadwell
+   16 Intel Core Processor (Broadwell)
+   ```
+
+4. 节点发现(NFD) 需要在每个节点上配置，默认情况会直接安装，如果已经配置，请在 `Helm chart `变量设置`nfd.enabled` 为 `false` , 再安装;
+
+5. 如果使用Kubernetes 1.13和1.14, 需要激活 [KubeletPodResources](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/)；
+
+   
+
+##### 支持的linux版本
+
+支持的linux版本如下：
 
 | OS Name / Version    | Identifier  | amd64 / x86_64 | ppc64le | arm64 / aarch64 |
 | -------------------- | ----------- | -------------- | ------- | --------------- |
@@ -96,9 +118,9 @@ Supported Linux distributions are listed below:
 | Ubuntu 18.04         | ubuntu18.04 | X              | X       | X               |
 | Ubuntu 20.04         | ubuntu20.04 | X              | X       | X               |
 
-##### Container Runtimes
+##### 容器运行时
 
-Supported container runtimes are listed below:
+支持的容器运行时：
 
 | OS Name / Version    | amd64 / x86_64 | ppc64le | arm64 / aarch64 |
 | -------------------- | -------------- | ------- | --------------- |
@@ -108,20 +130,13 @@ Supported container runtimes are listed below:
 | CentOS 8 Docker      | X              |         |                 |
 | RHEL/CentOS 7 Docker | X              |         |                 |
 
-##### Platform Requirements
+##### 配置doker环境
 
-The list of prerequisites for running NVIDIA Container Toolkit is described below:
+参考[这里](https://docs.docker.com/engine/install/)
 
-1. GNU/Linux x86_64 with kernel version > 3.10
-2. Docker >= 19.03 (recommended, but some distributions may include older versions of Docker. The minimum supported version is 1.12)
-3. NVIDIA GPU with Architecture > Fermi (or compute capability 2.1)
-4. [NVIDIA drivers](http://www.nvidia.com/object/unix.html) ~= 361.93 (untested on older versions)
+##### 安装 NVIDIA Container Toolkit
 
-##### Setting up Docker
-
-##### Setting up NVIDIA Container Toolkit
-
-Setup the `stable` repository and the GPG key:
+配置`stable` 仓库 和GPG key:
 
 ```
 $ distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
@@ -129,7 +144,7 @@ $ distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
    && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 ```
 
-Install the `nvidia-docker2` package (and dependencies) after updating the package listing:
+更新软件仓库后安装`nvidia-docker2`:
 
 ```
 $ sudo apt-get update
@@ -155,21 +170,17 @@ chooses "N" if you have custom settings, the configuration below will override y
 }
 ```
 
-Restart the Docker daemon to complete the installation after setting the default runtime:
+重启`docker`
 
 ```
 $ sudo systemctl restart docker
 ```
 
-##### [Environment variables (OCI spec)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#environment-variables-oci-spec)
+##### [自定义环境变量 (OCI spec)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#environment-variables-oci-spec)
 
-Users can control the behavior of the NVIDIA container runtime using environment variables - especially for enumerating the GPUs and the capabilities of the driver. Each environment variable maps to an command-line argument for `nvidia-container-cli` from [libnvidia-container](https://github.com/NVIDIA/libnvidia-container). These variables are already set in the NVIDIA provided base [CUDA images](https://ngc.nvidia.com/catalog/containers/nvidia:cuda).
+#### 安装NVIDIA GPU Operator
 
-#### Install NVIDIA GPU Operator
-
-##### Install Helm
-
-The preferred method to deploy the GPU Operator is using `helm`.
+##### 安装Helm
 
 ```
 $ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 \
@@ -177,19 +188,29 @@ $ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/s
    && ./get_helm.sh
 ```
 
-Now, add the NVIDIA Helm repository:
+添加`NVIDIA Helm`仓库
 
 ```
 $ helm repo add nvidia https://nvidia.github.io/gpu-operator \
    && helm repo update
 ```
 
-##### Install the GPU Operator
+##### 安装 GPU Operator
 
 ###### docker as runtime
 
 ```
-helm install --wait --generate-name nvidia/gpu-operator
+$ helm install --wait --generate-name nvidia/gpu-operator
+```
+
+如果需要指定驱动版本，可参考如下：
+
+```
+$ cat /proc/driver/nvidia/version 
+NVRM version: NVIDIA UNIX x86_64 Kernel Module  450.80.02  Wed Sep 23 01:13:39 UTC 2020
+GCC version:  gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04)
+$ helm install --wait --generate-name nvidia/gpu-operator \
+--set driver.version="450.80.02"
 ```
 
 ###### crio as runtime
@@ -223,20 +244,20 @@ toolkit:
     value: true
 ```
 
-**If the installation process times out, you can check whether the docker images are pulling or not.**
+**如果安装过程中出现超时，请检查你的镜像是否在拉取中**！
 
-##### [Considerations to Install in Air-Gapped Clusters](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/getting-started.html#considerations-to-install-in-air-gapped-clusters)
+##### [考虑无缝安装](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/getting-started.html#considerations-to-install-in-air-gapped-clusters)
 
-##### Deploy GPU Operator with updated `values.yaml`
+##### 使用 `values.yaml`安装
 
 ```
 $ helm install --wait --generate-name \
    nvidia/gpu-operator -f values.yaml
 ```
 
-#### Check the status of your deployments
+#### 检查已部署operator服务状态
 
-##### Check the health status of the pods
+##### 检查pods
 
 ```
 $ kubectl get pods -n gpu-operator-resources
@@ -258,7 +279,7 @@ gpu-operator-1611672791-node-feature-discovery-worker-rmx9w       1/1     Runnin
 gpu-operator-7d6d75f67c-kbmms                                     1/1     Running   1          11h
 ```
 
-##### Check if the resource exists
+##### 检查节点资源是否处于可分配
 
 ```
 $ kubectl describe node worker-gpu-001
@@ -273,9 +294,9 @@ Allocatable:
 ---
 ```
 
-#### Running Sample GPU Applications
+#### 两个实例
 
-##### Two examples from the official document
+##### 官方文档中的两个实例
 
 ```
 cat << EOF | kubectl create -f -
@@ -337,7 +358,7 @@ spec:
     - containerPort: 8
 ```
 
-##### Deploy the two applications
+##### 部署
 
 ```
 $ kubectl apply -f cuda-loader-generator.yaml 
@@ -365,7 +386,9 @@ Events:              <none>
 
 ![image-20210127105037194](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127105037194.png)
 
-##### Jupyter Notebook
+从上面的部署过程可知，当有GPU任务发布给平台时，GPU资源从可分配状态转变为已分配状态，安装任务发布的先后顺序，第二个任务在第一个任务运行结束后开始运行
+
+##### 使用Jupyter Notebook
 
 ```
 $ kubectl get svc # get the nodeport of the svc, 30001
@@ -389,22 +412,22 @@ $ kubectl logs tf-notebook
    or http://127.0.0.1:8888/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
 ```
 
-Take the token to access the jupyter notebook online service, you can  enjoy your jobs now.
+通过使用登录口令，我们可以进入notebook开发环境：
 
 ```
 http:://<your-machine-ip>:30001/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
 ```
 
-#### GPU Telemetry
+#### GPU测试
 
-##### Setting up Prometheus
+##### 安装Prometheus
 
-- you can deploy your Prometheus system by following [here](https://github.com/prometheus-operator/kube-prometheus.git)
-- A better Prometheus on the kubesphere platform will provide support in subsequent versions
+- 可以参考[这里](https://github.com/prometheus-operator/kube-prometheus.git)安装kube-prometheus
+- `kubesphere`平台将在后续版本支持更好用户体验的可观察性
 
-##### Deploy your own ServiceMonitor
+##### 部署ServiceMonitor
 
-Show the exportor `nvidia-dcgm-exporter` deployed by the operator
+`gpu-operator`帮我们提供了 `nvidia-dcgm-exporter` 这个`exportor`,只需要将它集成到`Prometheus`的可采集对象中，也就是`ServiceMonitor`中，我们就能获取GPU监控数据了:
 
 ```
 $ kubectl get pods -n gpu-operator-resources
@@ -417,7 +440,7 @@ nvidia-device-plugin-validation            0/1     Completed   0          5h27m
 nvidia-driver-daemonset-dvd9r              1/1     Running     3          15h
 ```
 
-Edit the `svc` to `NodePort` type,  so we can get the metrics like this:
+为了方便演示，本文将`nvidia-dcgm-exporter`的`svc`设为`NodePort`类型:
 
 ```
 $ kubectl get svc -n gpu-operator-resources
@@ -437,7 +460,7 @@ DCGM_FI_DEV_DEC_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",dev
 ----
 ```
 
-Get the service and endpoint:
+查看`nvidia-dcgm-exporter`暴露的`svc`和`ep`：
 
 ```
 root@master:~/gpu/samples# kubectl describe svc nvidia-dcgm-exporter -n gpu-operator-resources
@@ -457,7 +480,7 @@ External Traffic Policy:  Cluster
 Events:                   <none>
 ```
 
-So we can edit a servicemonitor like this:
+配置`ServiceMonitor`定义清单:
 
 ```
 $ cat custom/gpu-cm.yaml 
@@ -481,16 +504,29 @@ spec:
     - gpu-operator-resources
 ```
 
-After applying it, we can see the metrics like this below:
+将它提交给`k8s`平台后，我们可以在`Prometheus`的`UI`上看到采集到的内容：
 
 ![image-20210127153611937](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127153611937.png)
 
-##### Using Grafana
+##### 使用Grafana
 
-By configuration and decoration, you can see your own dashboard on the Grafana interface:
+通过配置和设计，本文制作了一个简陋的`dashboard`如下：
 
 ![image-20210127150716255](../../../../../AppData/Roaming/Typora/typora-user-images/image-20210127150716255.png)
 
-After running a AI task, you can see the changes below:
+通过运行一个AI任务后，我们可以清晰地捕捉到`GPU`的监控:
 
 ![](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimagesimage-20210127153816691.png)
+
+#### 卸载
+
+```
+$ helm list
+NAME                    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+gpu-operator-1611672791 default         1               2021-01-26 14:53:18.189686371 +0000 UTC deployed        gpu-operator-1.5.1      1.5.1      
+$ helm uninstall gpu-operator-1611672791
+```
+
+#### 重启无法使用CPU这件事
+
+关于部署好`gpu-operator`和`AI`的集群，重启时可能会出现插件还没加载，应用优先载入的情况，这时会出现用不上gpu的问题，需要重新部署应用才行。
