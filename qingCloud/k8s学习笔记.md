@@ -1075,6 +1075,93 @@ container_cpu_user_seconds_total{namespace="kube-system"} * on (pod) group_left(
 node_cpu_seconds_total{instance="ydzs-master"} * 10
 ```
 
+#### AlertManger
+
+##### 处理流程
+
+![alertmanager workflow](https://raw.githubusercontent.com/zhu733756/bedpic/main/images20200326101221.png)
+
+在 Prometheus 中一条告警规则主要由以下几部分组成：
+
+- 告警名称：用户需要为告警规则命名，当然对于命名而言，需要能够直接表达出该告警的主要内容
+- 告警规则：告警规则实际上主要由 `PromQL` 进行定义，其实际意义是当表达式（PromQL）查询结果持续多长时间（During）后出发告警
+
+启动参数中指定了配置文件 ，告警内容写在文件里面，通过cm挂载进去
+
+Prometheus的alert资源清单：
+
+```
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets: ["alertmanager:9093"]
+```
+
+##### 报警规则
+
+警报规则允许你基于 Prometheus 表达式语言的表达式来定义报警报条件，并在触发警报时发送通知给外部的接收者。
+
+```
+ rules.yml: |
+    groups:
+    - name: test-node-mem
+      rules:
+      - alert: NodeMemoryUsage
+        expr: (node_memory_MemTotal_bytes - (node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes)) / node_memory_MemTotal_bytes * 100 > 20
+        for: 2m
+        labels:
+          team: node
+        annotations:
+          summary: "{{$labels.instance}}: High Memory usage detected"
+          description: "{{$labels.instance}}: Memory usage is above 20% (current value is: {{ $value }}"
+```
+
+- `alert`：告警规则的名称
+- `expr`：是用于进行报警规则 PromQL 查询语句
+- `for`：评估等待时间（Pending Duration），用于表示只有当触发条件持续一段时间后才发送告警，在等待期间新产生的告警状态为`pending`, 这个参数主要用于降噪，很多类似响应时间这样的指标都是有抖动的
+- `labels`：自定义标签，允许用户指定额外的标签列表，把它们附加在告警上
+- `annotations`：指定了另一组标签，它们不被当做告警实例的身份标识，它们经常用于存储一些额外的信息，用于报警信息的展示之类的
+
+通过 `$labels.变量` 可以访问当前告警实例中指定标签的值，`$value` 则可以获取当前 PromQL 表达式计算的样本值。
+
+一个报警信息在生命周期内有下面3种状态：
+
+- `pending`: 表示在设置的阈值时间范围内被激活了
+- `firing`: 表示超过设置的阈值时间被激活了
+- `inactive`: 表示当前报警信息处于非活动状态
+
+##### 路由配置
+
+```
+routes:
+- receiver: email
+  group_wait: 10s
+  match:
+    team: node
+```
+
+##### Inhibition和 Silences
+
+![alert workflow](https://raw.githubusercontent.com/zhu733756/bedpic/main/images20200326105135.png)
+
+##### WebHook 接收器
+
+ AlertManager 支持很多中报警接收器，比如 slack、微信之类的，其中最为灵活的方式当然是使用 webhook 了，我们可以定义一个 webhook 来接收报警信息，然后在 webhook 里面去进行处理，需要发送怎样的报警信息我们自定义就可以
+
+##### 记录规则
+
+一种能够类似于后台批处理的机制在后台完成这些复杂运算的计算，对于使用者而言只需要查询这些运算结果即可。Prometheus 通过`Recoding Rule` 规则支持这种后台计算的方式，可以实现对复杂查询的性能优化，提高查询效率。
+
+```
+groups:
+- name: example
+  rules:
+  - record: job:http_inprogress_requests:sum
+    expr: sum(http_inprogress_requests) by (job)
+    # 添加或者覆盖的标签
+	labels:[ <labelname>: <labelvalue> ]
+```
+
 ### 日志
 
 ## 存储
