@@ -1,5 +1,7 @@
 
 
+
+
 ## GPU-Operator
 
 #### 官方代码仓库
@@ -18,7 +20,7 @@
 
 #### GPU-Operator Runtime 架构图
 
-![../_images/nvidia-docker-arch.png](https://docs.nvidia.com/datacenter/cloud-native/_images/nvidia-docker-arch.png)
+![../_images/nvidia-docker-arch.png](nvidia-docker-arch.png)
 
 #### 组件
 
@@ -200,32 +202,28 @@ $ helm repo add nvidia https://nvidia.github.io/gpu-operator \
 ###### docker as runtime
 
 ```
-$ helm install --wait --generate-name nvidia/gpu-operator
+$ kubectl create ns gpu-operator-resources
+$ helm install gpu-operator nvidia/gpu-operator -n gpu-operator-resources --wait
 ```
 
 如果需要指定驱动版本，可参考如下：
 
 ```
-$ cat /proc/driver/nvidia/version 
-NVRM version: NVIDIA UNIX x86_64 Kernel Module  450.80.02  Wed Sep 23 01:13:39 UTC 2020
-GCC version:  gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04)
-$ helm install --wait --generate-name nvidia/gpu-operator \
+$ helm install gpu-operator nvidia/gpu-operator -n gpu-operator-resources \
 --set driver.version="450.80.02"
 ```
 
 ###### crio as runtime
 
 ```
-helm install --wait --generate-name \
-   nvidia/gpu-operator \
+helm install gpu-operator nvidia/gpu-operator -n gpu-operator-resources\
    --set operator.defaultRuntime=crio
 ```
 
 ###### containerd as runtime
 
 ```
-helm install --wait --generate-name \
-   nvidia/gpu-operator \
+helm install gpu-operator nvidia/gpu-operator -n gpu-operator-resources\
    --set operator.defaultRuntime=containerd
 ```
 
@@ -251,8 +249,7 @@ toolkit:
 ##### 使用 `values.yaml`安装
 
 ```
-$ helm install --wait --generate-name \
-   nvidia/gpu-operator -f values.yaml
+$ helm install gpu-operator nvidia/gpu-operator -n gpu-operator-resources -f values.yaml
 ```
 
 #### 检查已部署operator服务状态
@@ -261,22 +258,17 @@ $ helm install --wait --generate-name \
 
 ```
 $ kubectl get pods -n gpu-operator-resources
-NAME                                       READY   STATUS      RESTARTS   AGE
-gpu-feature-discovery-ff4ng                1/1     Running     2          11h
-nvidia-container-toolkit-daemonset-2vxjz   1/1     Running     0          11h
-nvidia-dcgm-exporter-pqwfv                 1/1     Running     0          64m
-nvidia-device-plugin-daemonset-42n74       1/1     Running     0          64m
-nvidia-device-plugin-validation            0/1     Completed   0          64m
-nvidia-driver-daemonset-dvd9r              1/1     Running     3          11h
-```
-
-```
-$ kubectl get pods -n default
-NAME                                                              READY   STATUS    RESTARTS   AGE
-gpu-operator-1611672791-node-feature-discovery-master-bf8dmj6f8   1/1     Running   1          11h
-gpu-operator-1611672791-node-feature-discovery-worker-79wkd       1/1     Running   1          11h
-gpu-operator-1611672791-node-feature-discovery-worker-rmx9w       1/1     Running   2          11h
-gpu-operator-7d6d75f67c-kbmms                                     1/1     Running   1          11h
+NAME                                                          READY   STATUS      RESTARTS   AGE
+gpu-feature-discovery-4gk78                                   1/1     Running     0          35s
+gpu-operator-858fc55fdb-jv488                                 1/1     Running     0          2m52s
+gpu-operator-node-feature-discovery-master-7f9ccc4c7b-2sg6r   1/1     Running     0          2m52s
+gpu-operator-node-feature-discovery-worker-cbkhn              1/1     Running     0          2m52s
+gpu-operator-node-feature-discovery-worker-m8jcm              1/1     Running     0          2m52s
+nvidia-container-toolkit-daemonset-tfwqt                      1/1     Running     0          2m42s
+nvidia-dcgm-exporter-mqns5                                    1/1     Running     0          38s
+nvidia-device-plugin-daemonset-7npbs                          1/1     Running     0          53s
+nvidia-device-plugin-validation                               0/1     Completed   0          49s
+nvidia-driver-daemonset-hgv6s                                 1/1     Running     0          2m47s
 ```
 
 ##### 检查节点资源是否处于可分配
@@ -368,6 +360,8 @@ service/tf-notebook created
 pod/tf-notebook created
 ```
 
+查看`gpu`处于已分配状态:
+
 ```
 $ kubectl describe node worker-gpu-001
 ---
@@ -382,11 +376,18 @@ Allocated resources:
 Events:              <none>
 ```
 
-![image-20210127104932704](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127104932704.png)
+当有GPU任务发布给平台时，GPU资源从可分配状态转变为已分配状态，安装任务发布的先后顺序，第二个任务在第一个任务运行结束后开始运行：
 
-![image-20210127105037194](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127105037194.png)
-
-从上面的部署过程可知，当有GPU任务发布给平台时，GPU资源从可分配状态转变为已分配状态，安装任务发布的先后顺序，第二个任务在第一个任务运行结束后开始运行
+```
+$ kubectl get pods --watch
+NAME             READY   STATUS    RESTARTS   AGE
+dcgmproftester   1/1     Running   0          76s
+tf-notebook      0/1     Pending   0          58s
+------
+NAME             READY   STATUS      RESTARTS   AGE
+dcgmproftester   0/1     Completed   0          4m22s
+tf-notebook      1/1     Running     0          4m4s
+```
 
 ##### 使用Jupyter Notebook
 
@@ -418,16 +419,11 @@ $ kubectl logs tf-notebook
 http:://<your-machine-ip>:30001/?token=3660c9ee9b225458faaf853200bc512ff2206f635ab2b1d9
 ```
 
-#### GPU测试
-
-##### 安装Prometheus
-
-- 可以参考[这里](https://github.com/prometheus-operator/kube-prometheus.git)安装kube-prometheus
-- `kubesphere`平台将在后续版本支持更好用户体验的可观察性
+#### 在ks集群上集成GPU Operator可观察性
 
 ##### 部署ServiceMonitor
 
-`gpu-operator`帮我们提供了 `nvidia-dcgm-exporter` 这个`exportor`,只需要将它集成到`Prometheus`的可采集对象中，也就是`ServiceMonitor`中，我们就能获取GPU监控数据了:
+`gpu-operator`帮我们提供了 `nvidia-dcgm-exporter` 这个`exportor`, 只需要将它集成到`Prometheus`的可采集对象中，也就是`ServiceMonitor`中，我们就能获取GPU监控数据了:
 
 ```
 $ kubectl get pods -n gpu-operator-resources
@@ -440,30 +436,27 @@ nvidia-device-plugin-validation            0/1     Completed   0          5h27m
 nvidia-driver-daemonset-dvd9r              1/1     Running     3          15h
 ```
 
-为了方便演示，本文将`nvidia-dcgm-exporter`的`svc`设为`NodePort`类型:
+可以构建一个`busybox`查看该`exporter`暴露的指标:
 
 ```
 $ kubectl get svc -n gpu-operator-resources
-NAME                   TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-nvidia-dcgm-exporter   NodePort   10.233.28.200   <none>        9400:31129/TCP   5h31m
-$ curl http://[your node ip]:31129/metrics
+NAME                                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+gpu-operator-node-feature-discovery   ClusterIP   10.233.54.111   <none>        8080/TCP   56m
+nvidia-dcgm-exporter                  ClusterIP   10.233.53.196   <none>        9400/TCP   54m
+$ kubectl exec -it busybox-sleep -- sh
+$ wget http://nvidia-dcgm-exporter.gpu-operator-resources:9400/metrics
+$ cat metrics
 ----
 DCGM_FI_DEV_SM_CLOCK{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 405
 DCGM_FI_DEV_MEM_CLOCK{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 715
 DCGM_FI_DEV_GPU_TEMP{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 30
-DCGM_FI_DEV_POWER_USAGE{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 24.124000
-DCGM_FI_DEV_PCIE_REPLAY_COUNTER{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
-DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
-DCGM_FI_DEV_MEM_COPY_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
-DCGM_FI_DEV_ENC_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
-DCGM_FI_DEV_DEC_UTIL{gpu="0",UUID="GPU-eeff7856-475a-2eb7-6408-48d023d9dd28",device="nvidia0",container="tf-notebook",namespace="default",pod="tf-notebook"} 0
 ----
 ```
 
 查看`nvidia-dcgm-exporter`暴露的`svc`和`ep`：
 
 ```
-root@master:~/gpu/samples# kubectl describe svc nvidia-dcgm-exporter -n gpu-operator-resources
+$ kubectl describe svc nvidia-dcgm-exporter -n gpu-operator-resources
 Name:                     nvidia-dcgm-exporter
 Namespace:                gpu-operator-resources
 Labels:                   app=nvidia-dcgm-exporter
@@ -483,12 +476,12 @@ Events:                   <none>
 配置`ServiceMonitor`定义清单:
 
 ```
-$ cat custom/gpu-cm.yaml 
+$ cat custom/gpu-servicemonitor.yaml 
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: nvidia-dcgm-exporter
-  namespace: monitoring
+  namespace: gpu-operator-resources 
   labels:
      app: nvidia-dcgm-exporter
 spec:
@@ -502,31 +495,75 @@ spec:
   namespaceSelector:
     matchNames:
     - gpu-operator-resources
+$ kubectl apply -f custom/gpu-servicemonitor.yaml 
 ```
 
-将它提交给`k8s`平台后，我们可以在`Prometheus`的`UI`上看到采集到的内容：
+##### 检查GPU指标是否被采集（可选）
+
+将`servicemonitor`提交给`kubesphere`平台后，通过暴露`prometheus-k8s`为`NodePort`，我们可以在`Prometheus`的`UI`上验证一下是否采集到的相关指标：
 
 ![image-20210127153611937](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210127153611937.png)
 
-##### 使用Grafana
+##### 在ks集群上集成可观察性
 
-通过配置和设计，本文制作了一个简陋的`dashboard`如下：
+###### `ks 3.0`
 
-![image-20210127150716255](../../../../../AppData/Roaming/Typora/typora-user-images/image-20210127150716255.png)
+如果部署的ks版本是`ks 3.0 `，需要一下几个步骤完成可观察性监控：
 
-通过运行一个AI任务后，我们可以清晰地捕捉到`GPU`的监控:
+首先， 登录`ks console`后，创建一个企业空间名称为`ks-monitoring-demo` , 名称可按需创建;
 
-![](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimagesimage-20210127153816691.png)
+其次，需要将`servicemonitor`所在的目标名称空间`gpu-operator-resources`分配为已存在的企业空间中，以便纳入监控。
+
+![image-20210220130320650](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210220130320650.png)
+
+进入目标企业空间后，在纳管的项目找到`gpu-operator-resources`, 点击后找到可自定义监控界面
+
+![image-20210220131547569](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210220131547569.png)
+
+![image-20210220131812464](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210220131812464.png)
+
+###### 后续版本
+
+后续版本可选择添加集群监控
+
+###### 创建自定义监控
+
+下载`dashboard`以及配置`namespace`:
+
+```
+$ curl -LO https://raw.githubusercontent.com/kubesphere/monitoring-dashboard/master/contrib/gallery/nvidia-gpu-dcgm-exporter-dashboard.yaml
+$ cat nvidia-gpu-dcgm-exporter-dashboard.yaml
+----
+apiVersion: monitoring.kubesphere.io/v1alpha1
+kind: Dashboard
+metadata:
+  name: nvidia-dcgm-exporter-dashboard-rev1
+  namespace: gpu-operator-resources # 修改这里，必须与之前配置的ns名称一致
+spec:
+-----
+```
+
+可以直接命令行`apply`或者在自定义监控面板中选择编辑模式进行导入：
+
+![image-20210220150846576](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210220150846576.png)
+
+正确导入后：
+
+![image-20210220134110602](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210220134110602.png)
+
+在上面创建的`jupyter`运行`AI`任务后，可观察到相关指标变化：
+
+![image-20210220135406808](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210220135406808.png)
 
 #### 卸载
 
 ```
-$ helm list
-NAME                    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
-gpu-operator-1611672791 default         1               2021-01-26 14:53:18.189686371 +0000 UTC deployed        gpu-operator-1.5.1      1.5.1      
-$ helm uninstall gpu-operator-1611672791
+$ helm list -n gpu-operator-resources
+NAME            NAMESPACE               REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+gpu-operator    gpu-operator-resources  1               2021-02-20 11:50:56.162559286 +0800 CST deployed        gpu-operator-1.5.2      1.5.2     
+$ helm uninstall gpu-operator
 ```
 
-#### 重启无法使用GPU这件事
+#### 重启无法使用GPU
 
 关于部署好`gpu-operator`和`AI`的集群，重启时可能会出现插件还没加载，应用优先载入的情况，这时会出现用不上gpu的问题，需要重新部署应用才行。

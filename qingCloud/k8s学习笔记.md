@@ -79,6 +79,7 @@
 
   - `docker exec`是如何进入容器执行命令的？
     - 通过`inspect`获取容器在主机中的实际进程号
+      - docker inspect -f '{{.State.Pid}}' 7eb3043223e3
     - 将`/proc/{进程id}/ns/{ns}`这个fd以及要执行的命令`cmd`传递给`setns`
 - `setns`执行成功后，当前进程和运行的容器其实共享了名称空间，说明该进程就加入到容器中去了
   
@@ -119,39 +120,33 @@
   - `ImagePullPolicy`
     
     - `Always`
-  - 每次创建 Pod 都重新拉取一次镜像
-    
+      - 每次创建 Pod 都重新拉取一次镜像
     - `Never` 或者 `IfNotPresent`
+      - 不主动拉取，只有在宿主机不存在时才去拉取
     
-  - 不主动拉取，只有在宿主机不存在时才去拉取
-  
-- `OnFailure`
-      - 当容器终止运行且退出码不为0时，由kubelet自动重启该容器
-
+    - `OnFailure`
+          - 当容器终止运行且退出码不为0时，由kubelet自动重启该容器
   - `LifeStyle`
-
+  
     - `postStart`
   
     - 容器启动后立即执行一个操作
-
-    - ```
-    livenessProbe
-      ```
-
-      - 可以配置存活探测的频率、以及存活探测的接口【执行命令或者请求api】
-
+  
+    - livenessProbe
+    - 可以配置存活探测的频率、以及存活探测的接口【执行命令或者请求api】
+      
     - readinessProbe
-
+  
       - 可读性探针
   
     - `preStop`
-    
+  
       - 同步进行容器被杀死后的执行的一个操作
-
+  
   - resources
-
+  
     - `pod`运行资源限制
-
+  
 - 预写入容器配置【通过volumes挂载】
 
   - `Secret`

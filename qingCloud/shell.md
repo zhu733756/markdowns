@@ -1,4 +1,12 @@
+
+
 ## shell
+
+单引号中使用单引号'"'"'
+
+```
+kubectl get pods -A -o wide |grep "edgenode" | awk '{printf "$(kubectl describe pod %s -n %s |grep \"Controlled By\"|awk '"'"'{print $3}'"'"')\n\n", $2, $1 }'
+```
 
 #### 判断对象存在问题
 
@@ -117,3 +125,123 @@ lspci -v -s 00:09.0
 ```
 # rpm -qa                # 查看所有安装的软件包
 ```
+
+#### **环境变量**
+
+```shell
+printenv
+```
+
+```
+echo $[variable name]
+```
+
+## helm
+
+```
+# dry-run:
+helm install --dry-run --debug ./prometheus-example-app --generate-name
+```
+
+## Kubectl
+
+#### patch
+
+```
+
+PatchJson='{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/master": "","node-role.kubernetes.io/worker": ""}}}}}'
+#PatchJson='{"spec":{"template":{"spec":{"nodeSelector":{}}}}}'
+
+NoShedulPathJson='{"spec":{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-role.kubernetes.io/edge","operator":"DoesNotExist"}]}]}}}}}'
+
+edgenode="edgenode"
+namespaces=($(kubectl get pods -A -o wide |grep $edgenode | awk '{print $1}' ))
+pods=($(kubectl get pods -A -o wide |grep $edgenode | awk '{print $2}' ))
+
+echo ${namespaces[@]}
+echo ${pods[@]}
+length=${#namespaces[@]}
+for((i=0;i<$length;i++));  
+do
+ ns=${namespaces[$i]}
+ pod=${pods[$i]}
+ resources=$(kubectl -n $ns describe pod $pod | grep "Controlled By" |awk '{print $3}')
+ echo "Patchig for ns:"${namespaces[$i]}",resources:"$resources
+ kubectl -n $ns patch $resources --patch "$NoShedulPathJson"
+done
+```
+
+#### delete
+
+##### pods
+
+```
+$ kubectl delete pods <pod> --grace-period=0 --force
+```
+
+```
+$ kubectl patch pod <pod> -p '{"metadata":{"finalizers":null}}'
+```
+
+##### ns
+
+```
+$ curl -k -H "Content-Type: application/json" -X PUT -d '{"metadata":{"name":"istio-system"},"spec":{"finalizers":[]}}' http://127.0.0.1:8001/api/v1/namespaces/istio-system /finalize
+```
+
+#### restart
+
+##### single
+
+###### deployment
+
+```
+kubectl -n kubesphere-system rollout restart deploy $(kubectl get deployment -n kubesphere-system |egrep "console" |awk '{print $1}')
+```
+
+###### pods
+
+```
+ kubectl -n kubesphere-system delete pods $(kubectl get deployment -n kubesphere-system |egrep "console" |awk '{print $1}')
+```
+
+##### multi
+
+###### deployment
+
+```
+kubectl get deployment -n kubesphere-system |egrep "console|apiserver" | awk '{print $1}'|xargs kubectl -n kubesphere-system rollout restart deploy
+```
+
+###### pods
+
+```
+kubectl get pods -n kubesphere-system |egrep "console|apiserver" | awk '{print $1}'|xargs kubectl -n kubesphere-system delete pods {}
+```
+
+## Git
+
+#### upstream
+
+```
+git remote add upstream https://github.com/kubesphere/kubesphere
+```
+
+跟进上游更新：
+
+```
+git fetch upstream
+git merge upstream/master
+```
+
+常见回退和`rebase`：
+
+```
+1. git reset --hard head^n
+2. git remote add upstream https://github.com/kubeedge/kubeedge.git
+3. git fetch upstream
+4. git rebase upstream/master
+```
+
+
+
