@@ -622,6 +622,101 @@
 
 ### 网络
 
+docker模式下，用docker0作为网关访问主机上的容器，但跨主机容器通信网互访比较困难
+
+#### docker0和cni0
+
+docker0作为docker通信间的连接，充当docker网关，k8s中网桥是通过cni来实现的，cni0充当容器网络连接的网关
+
+#### pod网络配置
+
+启动infra容器，调用cni插件，为容器的网络命名空间配置网络栈，网卡、回环设备、路由表、iptables规则；
+
+cni插件分类：
+
+- main插件，bridge等用来创建网络设备
+- ipam插件，负责分配ip地址的二进制文件
+- cni社区维护的cni插件，flannel的tuning调整网络设备、portmap配置端口文件、限流等
+
+实现逻辑：
+
+- kubelet启动pod，会先让dockershim调用一个infram容器
+- setuppod方法，dockershim调用cni插件，补充配置文件、设置环境变量（add、delete）
+- cni插件调用bridge插件，检测主机是否有bridge，接着并进入infra的网络ns创建一堆veth pair设备
+- 调用ipam插件分配ip地址，并绑定容器的cni0网卡上
+- ip地址返回给dockershim, 绑定在pod的status上。
+
+#### flannel
+
+##### UDP模式
+
+跨主机容器通信， docker0 网桥的地址范围必须是 Flannel 为宿主机分配的子网
+
+![image-20210416161645884](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210416161645884.png)
+
+  - 容器1将数据包发给docker0进入宿主机网络
+
+- flannel0 TUN 设备（在操作系统内核和用户应用程序之间传递 IP 包）转发该ip数据包给Flannel 进程
+
+- 由于Node之间属于一个子网，那么flannel进程可以从etcd查询到目的子网对应的node，转发给对应node上的flannel进程，默认端口是8285
+
+- node2上的flannel进程将数据包转发给tunel设备，继而发送给容器2
+
+  ![image-20210416161927049](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210416161927049.png)
+
+  udp缓慢的原因是使用flannel进程和tunl设备，发生了三次用户态到内核态的迁移
+
+##### vxlan
+
+避免了使用flannel带来的用户态到内核态的频繁切换弊端，在内核态构建二层覆盖网络
+
+![image-20210416163122429](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210416163122429.png)
+
+![image-20210416164413354](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210416164413354.png)
+
+![image-20210416164853382](https://raw.githubusercontent.com/zhu733756/bedpic/main/imagesimage-20210416164853382.png)
+
+- flanneld维护neighbor网络中VTEP设备的出口
+- 通过arp记录读取对应VTEP设备的mac地址，伪装成二层封包数据包
+- 发包时通过vxlan头标识，也就是vni，标识为vxlan数据包，封装成一个udp数据包
+- flannel.1上的FDB信息可以通过bridge fdb命令查看到目的宿主机，因此就知道这个数据包发送目的在哪了
+- 在outer header添加二层网络发送到VTEP出口，通过解封包操作，容器2就能拿到数据包了
+
+##### host-gw（三层）
+
+将对端容器所在的宿主机的ip地址设置成flannel子网的吓一跳地址，主机充当网关，继而进行数据帧传送。
+
+好处：
+
+- 免除了解封装，性能损耗降低
+
+缺点：
+
+- 要求宿主机两层连通的
+
+#### calico（三层）
+
+与host-gw类似，几乎是一模一样。
+
+##### BGP
+
+边界网关，自治系统的边界上的网关，相当于一个网络agent.其实，它是一种节点路由信息共享的协议。
+
+- cni插件
+- FELIX，一个用来写入linux内核的FIB转发信息库，是一个daemonset。
+- BIRD。BGP的客户端，专门负责在集群里分发路由规则信息。
+
+##### Node2Node
+
+- route reflector, N*N => N, 指定专门的几个节点负责建立BGP连接学习全局的规则
+
+##### IPIP
+
+- node ip不在一个子网中，三成可达
+- calico在内核启用tunl0设备，也就是一个IP隧道，内核接管后进行封装
+- 所谓三层转发，虽然不在一个子网，下一跳经过路由器是可达的。
+- 第一跳在tanl0设备，第二条由内核发送IP隧道下一跳，最后达到对端容器。
+
 ### 监控
 
 #### Prometheus

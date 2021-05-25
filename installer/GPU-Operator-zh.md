@@ -162,7 +162,8 @@ $ sudo apt-get install -y nvidia-docker2
       Z     : start a shell to examine the situation
 -----
 chooses "N" if you have custom settings, the configuration below will override your settings.
-{
+{	
+    "default-runtime": "nvidia",
     "runtimes": {
         "nvidia": {
             "path": "/usr/bin/nvidia-container-runtime",

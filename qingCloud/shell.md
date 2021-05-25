@@ -136,6 +136,79 @@ printenv
 echo $[variable name]
 ```
 
+## docker
+
+#### 清理
+
+docker container prune
+
+docker image prune
+
+docker volume prune
+
+#### builder &  build
+
+```
+FROM golang:1.14-alpine3.11 AS builder
+
+ARG GO_LDFLAGS
+
+COPY . /go/src/github.com/kubeedge/kubeedge
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -v -o /usr/local/bin/cloudcore -ldflags "$GO_LDFLAGS -w -s" \
+github.com/kubeedge/kubeedge/cloud/cmd/cloudcore
+
+
+FROM alpine:3.11
+
+COPY --from=builder /usr/local/bin/cloudcore /usr/local/bin/cloudcore
+
+# ENTRYPOINT ["cloudcore"]
+```
+
+```
+# 创新新的buildx实例
+$ docker buildx create --name ks-all
+$ docker buildx use ks-all
+$ docker buildx inspect --bootstrap
+# build
+$ docker buildx build --push --platform linux/amd64,linux/arm64 -f cmd/notification-manager/Dockerfile . -t ${NM_IMG}
+```
+
+```
+docker push pixiake/kube-apiserver-amd64:v1.15.12
+docker push pixiake/kube-apiserver-arm64:v1.15.12
+docker manifest create pixiake/kube-apiserver:v1.15.12  \
+                       pixiake/kube-apiserver-amd64:v1.15.12 \
+                       pixiake/kube-apiserver-arm64:v1.15.12 --amend
+#查看                   
+docker manifest inspect  pixiake/kube-apiserver:v1.15.12
+#修正
+docker manifest annotate --arch arm64 \
+       pixiake/kube-apiserver:v1.15.12 \
+       pixiake/kube-apiserver-arm64:v1.15.12
+#push
+docker manifest push pixiake/kube-apiserver:v1.15.12
+```
+
+
+
+#### dockerfile goproxy
+
+```
+ENV GOPROXY=https://goproxy.cn
+```
+
+## awk
+
+#### 忽略第一行
+
+```
+lsof -i:9092 |awk 'NR == 1 {next} {print $2}' | uniq
+```
+
+
+
 ## helm
 
 ```
@@ -243,5 +316,9 @@ git merge upstream/master
 4. git rebase upstream/master
 ```
 
+## useful
 
+```
+ version=$(tr -d '\0' < $entry | grep -Pzo "(version:.*)|(versions:\n.*name:.*)" | sed 'N;s/\n/ /' | awk '{ n=split($0, a,":"); print a[n] }')
+```
 

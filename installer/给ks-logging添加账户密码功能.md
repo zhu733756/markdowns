@@ -13,7 +13,8 @@ Access：
 
 ```
 $ kubectl get secrets | grep elastic
-$ password=$(kubectl get secrets kubesphere-es-cluster-es-elastic-user -o go-template="{{.data.elastic | base64decode}}")
+$ password=$(kubectl -n kubesphere-logging-system get secrets kubesphere-es-cluster-es-elastic-user -o go-template="{{.data.elastic | base64decode}}")
+$ kubectl create secret generic elasticsearch-credentials --from-literal="elastic" --from-literal="password=$password" --type=kubernetes.io/basic-auth -n kubesphere-logging-system
 $  kubectl edit svc  kubesphere-es-cluster-es-http
 $ kubectl get svc  kubesphere-es-cluster-es-http
 NAME                            TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
@@ -44,6 +45,8 @@ kubesphere-es-cluster-es-http   NodePort   10.96.221.193   <none>        9200:30
 ```
 externalElasticsearchUrl: <192.168.0.2>
 externalElasticsearchPort: <9200>
+
+
 ```
 
 ```
