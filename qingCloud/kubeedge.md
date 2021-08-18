@@ -28,7 +28,7 @@ kubectl -n kubeedge get pods
 
 - Prerequisites :  docker + nsswitch.conf
 
-- console: http://139.198.178.130:30880/clusters/default/edgenodes 
+- console: 
   - run cmd on edge node
 
 #### Deploy workloads to edge node
